@@ -76,6 +76,60 @@ class Patient extends Model
 }
 ```
 
+The built in types include select, date, and boolean. This example defines the
+fields commonly used on a user profile:
+
+~~~php
+use App\Models\User;
+use PlinCode\CustomFields\Facades\CustomFields;
+use PlinCode\CustomFields\Models\CustomField;
+
+CustomFields::registerEntity(User::class, 'user', 'User');
+
+CustomField::create([
+    'entity_type' => 'user',
+    'name' => 'Sesso',
+    'type' => 'select',
+    'options' => [
+        ['key' => 'm', 'label' => 'M', 'is_active' => true],
+        ['key' => 'f', 'label' => 'F', 'is_active' => true],
+    ],
+]);
+
+CustomField::create([
+    'entity_type' => 'user',
+    'name' => 'Data di nascita',
+    'type' => 'date',
+]);
+
+CustomField::create([
+    'entity_type' => 'user',
+    'name' => 'Consenso marketing',
+    'type' => 'boolean',
+]);
+~~~
+
+After creating a user, assign and read the values through the owning model:
+
+~~~php
+$user->setCustomFields([
+    'sesso' => 'f',
+    'data-di-nascita' => '1990-05-12',
+    'consenso-marketing' => true,
+]);
+
+$user->getCustomFields();
+// [
+//     'sesso' => 'f',
+//     'data-di-nascita' => '1990-05-12',
+//     'consenso-marketing' => true,
+// ]
+~~~
+
+The date field and boolean field are optional by default. Set is_required on a
+definition and request complete validation when the product requires the full
+profile.
+
 Definitions are created by the product and belong to one registered entity. Names are trimmed and stored in lowercase. The generated slug is stable and is the key used by the application:
 
 ```php
