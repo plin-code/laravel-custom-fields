@@ -30,6 +30,12 @@ class CustomFieldObserver
             throw new InvalidArgumentException('A custom field slug and entity cannot be changed.');
         }
 
+        $valueModel = CustomFields::valueModel();
+
+        if ($field->isDirty('type') && $valueModel::query()->where('custom_field_id', $field->getKey())->exists()) {
+            throw new InvalidArgumentException('A custom field type cannot change while values exist.');
+        }
+
         $name = trim(mb_strtolower((string) $field->getAttribute('name')));
 
         if ($name === '') {

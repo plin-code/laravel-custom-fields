@@ -130,6 +130,19 @@ it('protects the stable slug from ordinary updates', function (): void {
         ->toThrow(InvalidArgumentException::class);
 });
 
+it('protects the field type when values already exist', function (): void {
+    $field = CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Rank',
+        'type' => 'number',
+    ]);
+    $article = Article::create(['title' => 'A']);
+    $article->setCustomField($field->slug, 10);
+
+    expect(fn () => $field->update(['type' => 'text']))
+        ->toThrow(InvalidArgumentException::class);
+});
+
 it('filters and sorts entities through the custom field query adapters', function (): void {
     $field = CustomField::create([
         'entity_type' => 'article',
