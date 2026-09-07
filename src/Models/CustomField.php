@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use PlinCode\CustomFields\Contracts\FieldType;
 use PlinCode\CustomFields\Database\Factories\CustomFieldFactory;
 use PlinCode\CustomFields\Events\CustomFieldCreated;
+use PlinCode\CustomFields\Events\CustomFieldDeleted;
 use PlinCode\CustomFields\Events\CustomFieldUpdated;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Observers\CustomFieldObserver;
@@ -19,6 +20,7 @@ class CustomField extends Model
     protected $dispatchesEvents = [
         'created' => CustomFieldCreated::class,
         'updated' => CustomFieldUpdated::class,
+        'deleted' => CustomFieldDeleted::class,
     ];
 
     protected $guarded = [];

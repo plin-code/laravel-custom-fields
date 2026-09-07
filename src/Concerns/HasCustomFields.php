@@ -61,6 +61,12 @@ trait HasCustomFields
         $row->save();
     }
 
+    public function clearCustomField(string $slug): void
+    {
+        $field = $this->customFieldDefinition($slug);
+        $this->customFieldValues()->where('custom_field_id', $field->getKey())->delete();
+    }
+
     public function scopeWhereCustomField(Builder $query, string $slug, mixed $value): Builder
     {
         $field = $this->customFieldDefinition($slug);
