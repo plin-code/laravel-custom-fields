@@ -94,7 +94,8 @@ class CustomFieldObserver
 
         while ($model::query()->where('entity_type', $entityType)->where('slug', $slug)->exists()) {
             $suffixText = '-'.$suffix++;
-            $slug = mb_substr($base, 0, 100 - mb_strlen($suffixText)).$suffixText;
+            $trimmed = rtrim(mb_substr($base, 0, max(1, 100 - mb_strlen($suffixText))), '-');
+            $slug = mb_substr($trimmed.$suffixText, 0, 100);
         }
 
         return $slug;
