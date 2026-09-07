@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/plin-code/laravel-custom-fields/main/art/banner.png" alt="Laravel Custom Fields">
+</p>
+
 <div align="center">
     <h1>Laravel Custom Fields</h1>
 </div>
