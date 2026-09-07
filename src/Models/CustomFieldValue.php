@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace PlinCode\CustomFields\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use PlinCode\CustomFields\Database\Factories\CustomFieldValueFactory;
 use PlinCode\CustomFields\Events\CustomFieldValueSaved;
 use PlinCode\CustomFields\Facades\CustomFields;
 
@@ -17,6 +19,12 @@ class CustomFieldValue extends Model
     ];
 
     protected $guarded = [];
+
+    /** @return Factory<self> */
+    protected static function newFactory(): Factory
+    {
+        return CustomFieldValueFactory::new();
+    }
 
     /** @return BelongsTo<CustomField, $this> */
     public function customField(): BelongsTo

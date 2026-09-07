@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace PlinCode\CustomFields\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use PlinCode\CustomFields\Contracts\FieldType;
+use PlinCode\CustomFields\Database\Factories\CustomFieldFactory;
 use PlinCode\CustomFields\Events\CustomFieldCreated;
 use PlinCode\CustomFields\Events\CustomFieldUpdated;
 use PlinCode\CustomFields\Facades\CustomFields;
@@ -20,6 +22,12 @@ class CustomField extends Model
     ];
 
     protected $guarded = [];
+
+    /** @return Factory<self> */
+    protected static function newFactory(): Factory
+    {
+        return CustomFieldFactory::new();
+    }
 
     protected static function booted(): void
     {
