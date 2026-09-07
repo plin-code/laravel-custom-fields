@@ -42,9 +42,9 @@ return new class extends Migration
             $table->json('value_json')->nullable();
             $table->timestamps();
 
-            $table->unique(['custom_field_id', 'valuable_type', 'valuable_id']);
-            $table->index(['custom_field_id', 'value_string']);
-            $table->index(['custom_field_id', 'value_boolean']);
+            $table->unique(['custom_field_id', 'valuable_type', 'valuable_id'], 'cfv_field_valuable_unique');
+            $table->index(['custom_field_id', 'value_string'], 'cfv_field_string_index');
+            $table->index(['custom_field_id', 'value_boolean'], 'cfv_field_boolean_index');
         });
     }
 
