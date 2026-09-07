@@ -41,7 +41,7 @@ class ValueValidator
             foreach ($values as $slug => $value) {
                 $field = $this->field($model, (string) $slug);
 
-                if ($field === null || $field->getAttribute('type') !== 'multiselect' || ! is_array($value)) {
+                if ($field === null || ! in_array($field->getAttribute('type'), ['select', 'multiselect'], true)) {
                     continue;
                 }
 
@@ -49,8 +49,21 @@ class ValueValidator
                     static fn (array $option): string => (string) ($option['key'] ?? ''),
                     (array) $field->getAttribute('options'),
                 );
-                foreach ($value as $option) {
-                    if (! in_array($option, $keys, true)) {
+                $activeKeys = array_map(
+                    static fn (array $option): string => (string) ($option['key'] ?? ''),
+                    array_filter((array) $field->getAttribute('options'), static fn (array $option): bool => (bool) ($option['is_active'] ?? true)),
+                );
+                $valueModel = CustomFields::valueModel();
+                $current = $valueModel::query()
+                    ->where('custom_field_id', $field->getKey())
+                    ->where('valuable_type', $model->getMorphClass())
+                    ->where('valuable_id', $model->getKey())
+                    ->first()?->getValue();
+                $submitted = $field->getAttribute('type') === 'multiselect' ? (array) $value : [$value];
+                foreach ($submitted as $option) {
+                    $isCurrent = is_array($current) ? in_array($option, $current, true) : $current === $option;
+
+                    if (! in_array($option, $keys, true) || (! in_array($option, $activeKeys, true) && ! $isCurrent)) {
                         $validator->errors()->add($slug, "The selected option [{$option}] is invalid.");
                     }
                 }

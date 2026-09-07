@@ -58,3 +58,26 @@ it('validates a custom value before writing it', function (): void {
     expect(fn () => $article->setCustomField($field->slug, 'invalid'))
         ->toThrow(ValidationException::class);
 });
+
+it('keeps an inactive selected option readable but blocks new assignments', function (): void {
+    $field = CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Status',
+        'type' => 'select',
+        'options' => [
+            ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => true],
+            ['key' => 'current', 'label' => 'Current', 'is_active' => true],
+        ],
+    ]);
+    $article = Article::create(['title' => 'A']);
+    $article->setCustomField($field->slug, 'legacy');
+
+    $field->update(['options' => [
+        ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => false],
+        ['key' => 'current', 'label' => 'Current', 'is_active' => true],
+    ]]);
+
+    expect($article->getCustomField($field->slug))->toBe('legacy')
+        ->and(fn () => Article::create(['title' => 'B'])->setCustomField($field->slug, 'legacy'))
+        ->toThrow(ValidationException::class);
+});
