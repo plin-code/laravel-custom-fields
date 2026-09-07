@@ -21,6 +21,42 @@ class CustomFieldObserver
 
         $field->setAttribute('name', $name);
         $field->setAttribute('slug', $field->getAttribute('slug') ?: $this->slug($name, (string) $field->getAttribute('entity_type')));
+        $this->validateOptions($field);
+    }
+
+    public function updating(Model $field): void
+    {
+        if ($field->isDirty('slug') || $field->isDirty('entity_type')) {
+            throw new InvalidArgumentException('A custom field slug and entity cannot be changed.');
+        }
+
+        $name = trim(mb_strtolower((string) $field->getAttribute('name')));
+
+        if ($name === '') {
+            throw new InvalidArgumentException('A custom field name cannot be empty.');
+        }
+
+        $field->setAttribute('name', $name);
+        $this->validateOptions($field);
+    }
+
+    private function validateOptions(Model $field): void
+    {
+        $seen = [];
+
+        foreach ((array) $field->getAttribute('options') as $option) {
+            if (! is_array($option) || trim((string) ($option['key'] ?? '')) === '' || trim((string) ($option['label'] ?? '')) === '') {
+                throw new InvalidArgumentException('Custom field options require a key and label.');
+            }
+
+            $key = (string) $option['key'];
+
+            if (isset($seen[$key])) {
+                throw new InvalidArgumentException("Custom field option [{$key}] is duplicated.");
+            }
+
+            $seen[$key] = true;
+        }
     }
 
     private function slug(string $name, string $entityType): string

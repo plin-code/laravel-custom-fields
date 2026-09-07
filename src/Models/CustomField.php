@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
 use PlinCode\CustomFields\Database\Factories\CustomFieldFactory;
 use PlinCode\CustomFields\Events\CustomFieldCreated;
@@ -78,6 +79,24 @@ class CustomField extends Model
             (array) $this->getAttribute('options'),
             static fn (array $option): bool => (bool) ($option['is_active'] ?? true),
         ));
+    }
+
+    /** @param array<int, array{key: string, label: string, is_active?: bool}> $options */
+    public function updateOptions(array $options): self
+    {
+        $existing = collect((array) $this->getAttribute('options'))->pluck('key')->all();
+        $next = collect($options)->pluck('key')->all();
+
+        foreach ($existing as $key) {
+            if (! in_array($key, $next, true)) {
+                throw new InvalidArgumentException("Custom field option [{$key}] cannot be removed.");
+            }
+        }
+
+        $this->setAttribute('options', $options);
+        $this->save();
+
+        return $this;
     }
 
     public function getTable(): string
