@@ -18,5 +18,5 @@ it('merges the package config', function () {
 });
 
 it('loads the package translations', function () {
-    expect(trans('laravel-custom-fields::messages.placeholder'))->toBe('CustomFields placeholder translation.');
+    expect(trans('laravel-custom-fields::messages.validation.invalid_option'))->toBe('The selected option is invalid.');
 });

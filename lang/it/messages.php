@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 return [
     'validation' => [
-        'invalid_option' => 'The selected option is invalid.',
+        'invalid_option' => 'L’opzione selezionata non è valida.',
     ],
 ];
