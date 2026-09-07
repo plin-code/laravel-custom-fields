@@ -6,7 +6,7 @@ namespace PlinCode\CustomFields\Query;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\JoinClause;
+use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Models\CustomField;
 use Spatie\QueryBuilder\Sorts\Sort;
 
@@ -22,16 +22,17 @@ class CustomFieldSorter implements Sort
         /** @var CustomField $field */
         $field = $this->field;
         $model = $query->getModel();
-        $alias = 'custom_field_'.$field->getKey();
-        $valuesTable = (string) config('laravel-custom-fields.tables.values');
         $column = $field->fieldType()->storageColumn();
+        $valueModel = CustomFields::valueModel();
+        $values = $valueModel::query()
+            ->select($valueModel::query()->getModel()->qualifyColumn($column))
+            ->whereColumn(
+                $valueModel::query()->getModel()->qualifyColumn('valuable_id'),
+                $model->getQualifiedKeyName(),
+            )
+            ->where($valueModel::query()->getModel()->qualifyColumn('valuable_type'), $model->getMorphClass())
+            ->where($valueModel::query()->getModel()->qualifyColumn('custom_field_id'), $field->getKey());
 
-        $query->leftJoin($valuesTable.' as '.$alias, function (JoinClause $join) use ($alias, $model, $field): void {
-            $join->on($alias.'.valuable_id', '=', $model->getQualifiedKeyName())
-                ->where($alias.'.valuable_type', '=', $model->getMorphClass())
-                ->where($alias.'.custom_field_id', '=', $field->getKey());
-        });
-
-        $query->orderBy($alias.'.'.$column, $descending ? 'desc' : 'asc');
+        $query->orderBy($values, $descending ? 'desc' : 'asc');
     }
 }

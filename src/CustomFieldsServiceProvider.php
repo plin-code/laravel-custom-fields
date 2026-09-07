@@ -27,6 +27,7 @@ class CustomFieldsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/laravel-custom-fields.php', 'laravel-custom-fields');
+        $this->validateKeyConfiguration();
 
         $this->app->singleton(CustomFields::class);
 
@@ -39,6 +40,15 @@ class CustomFieldsServiceProvider extends ServiceProvider
                 }
             }
         });
+    }
+
+    private function validateKeyConfiguration(): void
+    {
+        foreach (['key_type', 'morph_key_type'] as $key) {
+            if (! in_array(config('laravel-custom-fields.'.$key), ['id', 'uuid', 'ulid'], true)) {
+                throw new InvalidArgumentException("Unsupported custom fields key type [{$key}].");
+            }
+        }
     }
 
     /**
