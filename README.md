@@ -20,6 +20,9 @@ You can install the package via Composer:
 composer require plin-code/laravel-custom-fields
 ```
 
+The package requires PHP 8.4 or newer and supports Laravel 12 and 13. It also uses
+Spatie Query Builder and the Plin Code Eloquent sorts adapter for list integrations.
+
 You may publish all of the package's resources at once:
 
 ```bash
@@ -40,6 +43,11 @@ php artisan vendor:publish --tag="laravel-custom-fields-config"
 php artisan vendor:publish --tag="laravel-custom-fields-migrations"
 php artisan migrate
 ```
+
+Set key_type and morph_key_type in the published configuration before running the
+migrations. Each accepts id, uuid, or ulid. The default internal key is id, while
+the default key for owning models is uuid. A single installation must use one key
+type consistently.
 
 ### Publishing the Translations
 
@@ -85,7 +93,18 @@ $patient->setCustomField($field->slug, 'low');
 $patient->getCustomField($field->slug);
 ```
 
+Partial updates validate only submitted values. A product can request complete
+validation when it needs every required active field:
+
+    $patient->setCustomFields(['risk-level' => 'low'], complete: true);
+
+Passing null clears a stored value. clearCustomField() removes it explicitly.
+Inactive definitions are excluded from ordinary reads, form metadata, filters, and
+sorts. Use getCustomFields(includeInactive: true) for an explicit historical read.
+
 Options use stable keys. Labels can change, while inactive options remain readable on existing records and are excluded from the input metadata returned by `optionsForInput()`.
+Use updateOptions() to change labels, activate or deactivate options, and append new
+keys. Existing keys cannot be removed or reused.
 
 For API lists, expose only the fields the product wants to make available:
 
@@ -96,6 +115,11 @@ QueryBuilder::for(Patient::class)
 ```
 
 The package is headless. It does not provide controllers, authorization or UI components. The product owns those layers and can iterate over `CustomFields::types()` to build its widget.
+
+Custom types implement PlinCode\\CustomFields\\Contracts\\FieldType. Register a type
+from a service provider with CustomFields::registerType(). A type owns its storage
+column, validation rules, serialization, deserialization, defaults, labels, and
+declared query operations.
 
 ## Contributing
 
