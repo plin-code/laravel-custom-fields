@@ -7,10 +7,15 @@ namespace PlinCode\CustomFields\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use PlinCode\CustomFields\Events\CustomFieldValueSaved;
 use PlinCode\CustomFields\Facades\CustomFields;
 
 class CustomFieldValue extends Model
 {
+    protected $dispatchesEvents = [
+        'saved' => CustomFieldValueSaved::class,
+    ];
+
     protected $guarded = [];
 
     /** @return BelongsTo<CustomField, $this> */

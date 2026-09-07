@@ -7,11 +7,18 @@ namespace PlinCode\CustomFields\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use PlinCode\CustomFields\Contracts\FieldType;
+use PlinCode\CustomFields\Events\CustomFieldCreated;
+use PlinCode\CustomFields\Events\CustomFieldUpdated;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Observers\CustomFieldObserver;
 
 class CustomField extends Model
 {
+    protected $dispatchesEvents = [
+        'created' => CustomFieldCreated::class,
+        'updated' => CustomFieldUpdated::class,
+    ];
+
     protected $guarded = [];
 
     protected static function booted(): void
