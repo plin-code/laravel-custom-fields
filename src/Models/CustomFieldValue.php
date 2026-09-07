@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 use PlinCode\CustomFields\Database\Factories\CustomFieldValueFactory;
 use PlinCode\CustomFields\Events\CustomFieldValueDeleted;
 use PlinCode\CustomFields\Events\CustomFieldValueSaved;
@@ -26,6 +27,29 @@ class CustomFieldValue extends Model
     protected static function newFactory(): Factory
     {
         return CustomFieldValueFactory::new();
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $value): void {
+            if ($value->getIncrementing()) {
+                return;
+            }
+
+            $value->setAttribute($value->getKeyName(), config('laravel-custom-fields.key_type') === 'ulid'
+                ? (string) Str::ulid()
+                : (string) Str::uuid());
+        });
+    }
+
+    public function getKeyType(): string
+    {
+        return config('laravel-custom-fields.key_type') === 'id' ? 'int' : 'string';
+    }
+
+    public function getIncrementing(): bool
+    {
+        return config('laravel-custom-fields.key_type') === 'id';
     }
 
     /** @return BelongsTo<CustomField, $this> */

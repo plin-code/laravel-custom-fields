@@ -6,6 +6,7 @@ namespace PlinCode\CustomFields\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Facades\CustomFields;
 
@@ -43,7 +44,25 @@ trait HasCustomFields
 
     public function setCustomField(string $slug, mixed $value): void
     {
-        CustomFields::validate($this, [$slug => $value]);
+        $this->setCustomFields([$slug => $value]);
+    }
+
+    /** @param array<string, mixed> $values */
+    public function setCustomFields(array $values, bool $complete = false): void
+    {
+        CustomFields::validate($this, $values, $complete);
+        $valueModel = CustomFields::valueModel();
+        $connection = $valueModel::query()->getModel()->getConnectionName();
+
+        DB::connection($connection)->transaction(function () use ($values): void {
+            foreach ($values as $slug => $value) {
+                $this->writeCustomField((string) $slug, $value);
+            }
+        });
+    }
+
+    private function writeCustomField(string $slug, mixed $value): void
+    {
         $field = $this->customFieldDefinition($slug);
         $model = CustomFields::valueModel();
         $row = $model::query()->firstOrNew([

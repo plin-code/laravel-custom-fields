@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace PlinCode\CustomFields;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
@@ -50,16 +51,25 @@ class CustomFields
         return array_map(fn (string $type): FieldType => app($type), $this->types);
     }
 
+    /** @param class-string<Model> $model */
     public function registerEntity(string $model, string $key, ?string $label = null): void
     {
-        if (in_array($key, array_column($this->entities, 'key'), true)) {
-            throw new InvalidArgumentException("Custom field entity key [{$key}] is already registered.");
+        if (isset($this->entities[$model])) {
+            return;
+        }
+
+        foreach ($this->entities as $entity) {
+            if ($entity['key'] === $key) {
+                throw new InvalidArgumentException("Custom field entity key [{$key}] is already registered.");
+            }
         }
 
         $this->entities[$model] = [
             'key' => $key,
             'label' => $label ?? Str::headline(class_basename($model)),
         ];
+
+        Relation::morphMap([$key => $model]);
     }
 
     /** @return array<string, array{key: string, label: string}> */

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Validation\ValidationException;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Models\CustomField;
@@ -20,6 +21,19 @@ it('creates a normalized field with a stable slug', function (): void {
 
     expect($field->name)->toBe('sector')
         ->and($field->slug)->toBe('sector');
+});
+
+it('registers the entity in the Laravel morph map', function (): void {
+    expect(Relation::getMorphedModel('article'))->toBe(Article::class);
+});
+
+it('uses configured string keys for field models', function (): void {
+    config()->set('laravel-custom-fields.key_type', 'ulid');
+
+    $field = new CustomField;
+
+    expect($field->getKeyType())->toBe('string')
+        ->and($field->getIncrementing())->toBeFalse();
 });
 
 it('writes and reads a typed custom value', function (): void {
@@ -80,4 +94,38 @@ it('keeps an inactive selected option readable but blocks new assignments', func
     expect($article->getCustomField($field->slug))->toBe('legacy')
         ->and(fn () => Article::create(['title' => 'B'])->setCustomField($field->slug, 'legacy'))
         ->toThrow(ValidationException::class);
+});
+
+it('writes a batch of values atomically and supports complete validation', function (): void {
+    $rank = CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Rank',
+        'type' => 'number',
+    ]);
+    $email = CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Email',
+        'type' => 'email',
+        'is_required' => true,
+    ]);
+    $article = Article::create(['title' => 'A']);
+
+    $article->setCustomFields([
+        $rank->slug => 10,
+        $email->slug => 'person@example.com',
+    ], complete: true);
+
+    expect($article->getCustomFields())->toMatchArray([
+        'rank' => 10,
+        'email' => 'person@example.com',
+    ]);
+
+    $other = Article::create(['title' => 'B']);
+
+    expect(fn () => $other->setCustomFields([
+        $rank->slug => 20,
+        $email->slug => 'invalid',
+    ]))->toThrow(ValidationException::class);
+
+    expect($other->getCustomField($rank->slug))->toBeNull();
 });

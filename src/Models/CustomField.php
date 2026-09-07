@@ -7,6 +7,7 @@ namespace PlinCode\CustomFields\Models;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 use PlinCode\CustomFields\Contracts\FieldType;
 use PlinCode\CustomFields\Database\Factories\CustomFieldFactory;
 use PlinCode\CustomFields\Events\CustomFieldCreated;
@@ -34,6 +35,26 @@ class CustomField extends Model
     protected static function booted(): void
     {
         static::observe(CustomFieldObserver::class);
+
+        static::creating(function (self $field): void {
+            if ($field->getIncrementing()) {
+                return;
+            }
+
+            $field->setAttribute($field->getKeyName(), config('laravel-custom-fields.key_type') === 'ulid'
+                ? (string) Str::ulid()
+                : (string) Str::uuid());
+        });
+    }
+
+    public function getKeyType(): string
+    {
+        return config('laravel-custom-fields.key_type') === 'id' ? 'int' : 'string';
+    }
+
+    public function getIncrementing(): bool
+    {
+        return config('laravel-custom-fields.key_type') === 'id';
     }
 
     /** @return HasMany<CustomFieldValue, $this> */
