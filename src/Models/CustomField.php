@@ -33,6 +33,15 @@ class CustomField extends Model
         return CustomFields::type($this->getAttribute('type'));
     }
 
+    /** @return array<int, array{key: string, label: string, is_active: bool}> */
+    public function optionsForInput(): array
+    {
+        return array_values(array_filter(
+            (array) $this->getAttribute('options'),
+            static fn (array $option): bool => (bool) ($option['is_active'] ?? true),
+        ));
+    }
+
     public function getTable(): string
     {
         return (string) config('laravel-custom-fields.tables.fields');

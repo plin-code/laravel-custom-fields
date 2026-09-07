@@ -49,7 +49,53 @@ php artisan vendor:publish --tag="laravel-custom-fields-lang"
 
 ## Usage
 
-<!-- Add a basic usage example here. -->
+Register the models that can own custom fields during application boot:
+
+```php
+use PlinCode\CustomFields\Facades\CustomFields;
+
+CustomFields::registerEntity(\App\Models\Patient::class, 'patient', 'Patient');
+```
+
+Add the trait to the owning model:
+
+```php
+use PlinCode\CustomFields\Concerns\HasCustomFields;
+
+class Patient extends Model
+{
+    use HasCustomFields;
+}
+```
+
+Definitions are created by the product and belong to one registered entity. Names are trimmed and stored in lowercase. The generated slug is stable and is the key used by the application:
+
+```php
+$field = CustomField::create([
+    'entity_type' => 'patient',
+    'name' => '  Risk level  ',
+    'type' => 'select',
+    'options' => [
+        ['key' => 'low', 'label' => 'Low', 'is_active' => true],
+        ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => false],
+    ],
+]);
+
+$patient->setCustomField($field->slug, 'low');
+$patient->getCustomField($field->slug);
+```
+
+Options use stable keys. Labels can change, while inactive options remain readable on existing records and are excluded from the input metadata returned by `optionsForInput()`.
+
+For API lists, expose only the fields the product wants to make available:
+
+```php
+QueryBuilder::for(Patient::class)
+    ->allowedFilters(...CustomFields::filtersFor(Patient::class))
+    ->allowedSorts(...CustomFields::sortsFor(Patient::class));
+```
+
+The package is headless. It does not provide controllers, authorization or UI components. The product owns those layers and can iterate over `CustomFields::types()` to build its widget.
 
 ## Contributing
 
