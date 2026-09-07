@@ -81,6 +81,32 @@ class CustomField extends Model
         ));
     }
 
+    /**
+     * Every option key defined on the field, including the inactive ones.
+     *
+     * @return array<int, string>
+     */
+    public function optionKeys(): array
+    {
+        return array_values(array_map(
+            static fn (array $option): string => (string) ($option['key'] ?? ''),
+            (array) $this->getAttribute('options'),
+        ));
+    }
+
+    /**
+     * The option keys that can still be assigned to a value.
+     *
+     * @return array<int, string>
+     */
+    public function activeOptionKeys(): array
+    {
+        return array_values(array_map(
+            static fn (array $option): string => (string) $option['key'],
+            $this->optionsForInput(),
+        ));
+    }
+
     /** @param array<int, array{key: string, label: string, is_active?: bool}> $options */
     public function updateOptions(array $options): self
     {
