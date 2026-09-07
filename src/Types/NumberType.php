@@ -51,6 +51,6 @@ class NumberType implements FieldType
 
     public function queryOperations(): array
     {
-        return ['equals', 'in', 'greater_than', 'less_than', 'between', 'sort'];
+        return ['equals', 'in', 'greater_than', 'less_than', 'between', 'is_null', 'is_not_null', 'sort'];
     }
 }

@@ -25,6 +25,14 @@ interface FieldType
 
     public function inputHint(): string;
 
-    /** @return array<int, string> */
+    /**
+     * Query operations the type can actually serve.
+     *
+     * The vocabulary of the package is equals, in, contains, greater_than, less_than,
+     * between, is_null, is_not_null, contains_any, contains_all and sort. A consumer
+     * type may declare its own operation, and then it also provides the filter for it.
+     *
+     * @return array<int, string>
+     */
     public function queryOperations(): array;
 }

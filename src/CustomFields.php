@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PlinCode\CustomFields;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
@@ -110,33 +111,132 @@ class CustomFields
         $this->validator()->validate($model, $values, $complete);
     }
 
-    /** @return array<int, AllowedFilter> */
+    /**
+     * Filters for every active field of the host, one per declared query operation.
+     *
+     * This reads the definitions from the database, so call it while serving a request
+     * and not while a service provider boots.
+     *
+     * @return array<int, AllowedFilter>
+     */
     public function filtersFor(Model|string $model): array
     {
-        $fieldModel = $this->fieldModel();
-        $entityKey = $this->entityKey($model);
-
-        return $fieldModel::query()->where('entity_type', $entityKey)->where('is_active', true)->get()
-            ->map(fn (Model $field): AllowedFilter => AllowedFilter::custom(
-                'cf_'.$field->getAttribute('slug'),
-                new CustomFieldFilter($field),
-            ))->all();
+        return $this->buildFilters($this->queryableFields($model));
     }
 
-    /** @return array<int, AllowedSort> */
+    /**
+     * Sorts for every active field of the host that declares the sort operation.
+     *
+     * This reads the definitions from the database, so call it while serving a request
+     * and not while a service provider boots.
+     *
+     * @return array<int, AllowedSort>
+     */
     public function sortsFor(Model|string $model): array
     {
-        $fieldModel = $this->fieldModel();
-        $entityKey = $this->entityKey($model);
+        return $this->buildSorts($this->queryableFields($model));
+    }
 
-        return $fieldModel::query()->where('entity_type', $entityKey)->where('is_active', true)->get()
-            ->filter(function (Model $field): bool {
-                /** @var CustomField $field */
-                return in_array('sort', $field->fieldType()->queryOperations(), true);
-            })
-            ->map(fn (Model $field): AllowedSort => AllowedSort::custom(
-                'cf_'.$field->getAttribute('slug'),
+    /**
+     * Filters and sorts of the host, reading the definitions once.
+     *
+     * @return array{filters: array<int, AllowedFilter>, sorts: array<int, AllowedSort>}
+     */
+    public function queryOptionsFor(Model|string $model): array
+    {
+        $fields = $this->queryableFields($model);
+
+        return [
+            'filters' => $this->buildFilters($fields),
+            'sorts' => $this->buildSorts($fields),
+        ];
+    }
+
+    /** Prefix of every filter and sort name exposed to a request. */
+    public function keyPrefix(): string
+    {
+        return (string) config('laravel-custom-fields.key_prefix', 'cf_');
+    }
+
+    /**
+     * Name of the filter for a field slug and one query operation.
+     *
+     * Equality keeps the bare name, every other operation is suffixed with a colon,
+     * a character a generated slug never contains.
+     */
+    public function filterName(string $slug, string $operation = CustomFieldFilter::EQUALS): string
+    {
+        $name = $this->keyPrefix().$slug;
+
+        return $operation === CustomFieldFilter::EQUALS ? $name : $name.':'.$operation;
+    }
+
+    public function sortName(string $slug): string
+    {
+        return $this->keyPrefix().$slug;
+    }
+
+    /**
+     * @param  Collection<int, Model>  $fields
+     * @return array<int, AllowedFilter>
+     */
+    private function buildFilters(Collection $fields): array
+    {
+        $filters = [];
+
+        foreach ($fields as $field) {
+            /** @var CustomField $field */
+            $slug = (string) $field->getAttribute('slug');
+
+            foreach ($field->fieldType()->queryOperations() as $operation) {
+                if (! CustomFieldFilter::supports($operation)) {
+                    continue;
+                }
+
+                $filters[] = AllowedFilter::custom(
+                    $this->filterName($slug, $operation),
+                    new CustomFieldFilter($field, $operation),
+                );
+            }
+        }
+
+        return $filters;
+    }
+
+    /**
+     * @param  Collection<int, Model>  $fields
+     * @return array<int, AllowedSort>
+     */
+    private function buildSorts(Collection $fields): array
+    {
+        $sorts = [];
+
+        foreach ($fields as $field) {
+            /** @var CustomField $field */
+            if (! in_array(CustomFieldSorter::SORT, $field->fieldType()->queryOperations(), true)) {
+                continue;
+            }
+
+            $sorts[] = AllowedSort::custom(
+                $this->sortName((string) $field->getAttribute('slug')),
                 new CustomFieldSorter($field),
-            ))->all();
+            );
+        }
+
+        return $sorts;
+    }
+
+    /** @return Collection<int, Model> */
+    private function queryableFields(Model|string $model): Collection
+    {
+        $fieldModel = $this->fieldModel();
+
+        /** @var Collection<int, Model> $fields */
+        $fields = $fieldModel::query()
+            ->where('entity_type', $this->entityKey($model))
+            ->where('is_active', true)
+            ->get();
+
+        return $fields;
     }
 }

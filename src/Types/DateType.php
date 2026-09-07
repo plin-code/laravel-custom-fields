@@ -51,6 +51,6 @@ class DateType implements FieldType
 
     public function queryOperations(): array
     {
-        return ['equals', 'greater_than', 'less_than', 'between', 'sort'];
+        return ['equals', 'greater_than', 'less_than', 'between', 'is_null', 'is_not_null', 'sort'];
     }
 }

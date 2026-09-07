@@ -19,9 +19,18 @@ class BooleanType implements FieldType
         return 'value_boolean';
     }
 
+    /**
+     * A request carries a boolean as text, so the textual forms are read as well.
+     * Validated writes only ever pass true, false, 1, 0, "1" and "0", which keep the
+     * same meaning they had before.
+     */
     public function serialize(mixed $value, Model $field): mixed
     {
-        return $value === null ? null : (bool) $value;
+        if ($value === null) {
+            return null;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $value;
     }
 
     public function deserialize(mixed $value, Model $field): mixed
@@ -51,6 +60,6 @@ class BooleanType implements FieldType
 
     public function queryOperations(): array
     {
-        return ['equals', 'sort'];
+        return ['equals', 'is_null', 'is_not_null', 'sort'];
     }
 }
