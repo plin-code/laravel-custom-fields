@@ -5,10 +5,27 @@ declare(strict_types=1);
 namespace PlinCode\CustomFields\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use PlinCode\CustomFields\Contracts\FieldType;
+use PlinCode\CustomFields\Facades\CustomFields;
 
 class CustomField extends Model
 {
     protected $guarded = [];
+
+    /** @return HasMany<CustomFieldValue, $this> */
+    public function values(): HasMany
+    {
+        /** @var class-string<CustomFieldValue> $model */
+        $model = CustomFields::valueModel();
+
+        return $this->hasMany($model, 'custom_field_id');
+    }
+
+    public function fieldType(): FieldType
+    {
+        return CustomFields::type($this->getAttribute('type'));
+    }
 
     public function getTable(): string
     {

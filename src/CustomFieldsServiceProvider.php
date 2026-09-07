@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace PlinCode\CustomFields;
 
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
+use PlinCode\CustomFields\Types\NumberType;
+use PlinCode\CustomFields\Types\TextType;
 
 class CustomFieldsServiceProvider extends ServiceProvider
 {
@@ -16,6 +19,16 @@ class CustomFieldsServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/laravel-custom-fields.php', 'laravel-custom-fields');
 
         $this->app->singleton(CustomFields::class);
+
+        $this->app->afterResolving(CustomFields::class, function (CustomFields $manager): void {
+            foreach ([TextType::class, NumberType::class] as $type) {
+                try {
+                    $manager->registerType($type);
+                } catch (InvalidArgumentException) {
+                    // The consumer may register the built-in type eagerly.
+                }
+            }
+        });
     }
 
     /**
