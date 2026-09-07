@@ -26,7 +26,7 @@ class CustomFieldSorter implements Sort
         $valuesTable = (string) config('laravel-custom-fields.tables.values');
         $column = $field->fieldType()->storageColumn();
 
-        $query->leftJoin($valuesTable.' as '.$alias, function (JoinClause $join) use ($alias, $model): void {
+        $query->leftJoin($valuesTable.' as '.$alias, function (JoinClause $join) use ($alias, $model, $field): void {
             $join->on($alias.'.valuable_id', '=', $model->getQualifiedKeyName())
                 ->where($alias.'.valuable_type', '=', $model->getMorphClass())
                 ->where($alias.'.custom_field_id', '=', $field->getKey());
