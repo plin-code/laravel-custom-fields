@@ -8,7 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
+use PlinCode\CustomFields\Models\CustomField;
+use PlinCode\CustomFields\Query\CustomFieldFilter;
+use PlinCode\CustomFields\Query\CustomFieldSorter;
 use PlinCode\CustomFields\Validation\ValueValidator;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\AllowedSort;
 
 class CustomFields
 {
@@ -93,5 +98,35 @@ class CustomFields
     public function validate(Model $model, array $values, bool $complete = false): void
     {
         $this->validator()->validate($model, $values, $complete);
+    }
+
+    /** @return array<int, AllowedFilter> */
+    public function filtersFor(Model|string $model): array
+    {
+        $fieldModel = $this->fieldModel();
+        $entityKey = $this->entityKey($model);
+
+        return $fieldModel::query()->where('entity_type', $entityKey)->where('is_active', true)->get()
+            ->map(fn (Model $field): AllowedFilter => AllowedFilter::custom(
+                'cf_'.$field->getAttribute('slug'),
+                new CustomFieldFilter($field),
+            ))->all();
+    }
+
+    /** @return array<int, AllowedSort> */
+    public function sortsFor(Model|string $model): array
+    {
+        $fieldModel = $this->fieldModel();
+        $entityKey = $this->entityKey($model);
+
+        return $fieldModel::query()->where('entity_type', $entityKey)->where('is_active', true)->get()
+            ->filter(function (Model $field): bool {
+                /** @var CustomField $field */
+                return in_array('sort', $field->fieldType()->queryOperations(), true);
+            })
+            ->map(fn (Model $field): AllowedSort => AllowedSort::custom(
+                'cf_'.$field->getAttribute('slug'),
+                new CustomFieldSorter($field),
+            ))->all();
     }
 }
