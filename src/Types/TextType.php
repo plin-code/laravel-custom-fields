@@ -51,6 +51,6 @@ class TextType implements FieldType
 
     public function queryOperations(): array
     {
-        return ['equals', 'in', 'contains', 'sort'];
+        return ['equals', 'in', 'contains', 'is_null', 'is_not_null', 'sort'];
     }
 }

@@ -35,6 +35,6 @@ class TextareaType extends TextType
 
     public function queryOperations(): array
     {
-        return ['equals', 'contains'];
+        return ['equals', 'contains', 'is_null', 'is_not_null'];
     }
 }
