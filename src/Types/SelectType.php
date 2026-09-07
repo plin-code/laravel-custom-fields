@@ -52,7 +52,7 @@ class SelectType implements FieldType
 
     public function queryOperations(): array
     {
-        return ['equals', 'in', 'sort'];
+        return ['equals', 'in', 'is_null', 'is_not_null', 'sort'];
     }
 
     /** @return array<int, string> */

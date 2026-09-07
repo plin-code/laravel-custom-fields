@@ -51,6 +51,6 @@ class MultiSelectType implements FieldType
 
     public function queryOperations(): array
     {
-        return ['contains_any', 'contains_all'];
+        return ['contains_any', 'contains_all', 'is_null', 'is_not_null'];
     }
 }
