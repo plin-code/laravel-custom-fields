@@ -8,10 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use PlinCode\CustomFields\Contracts\FieldType;
 use PlinCode\CustomFields\Facades\CustomFields;
+use PlinCode\CustomFields\Observers\CustomFieldObserver;
 
 class CustomField extends Model
 {
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        static::observe(CustomFieldObserver::class);
+    }
 
     /** @return HasMany<CustomFieldValue, $this> */
     public function values(): HasMany
