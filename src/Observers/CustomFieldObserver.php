@@ -37,7 +37,26 @@ class CustomFieldObserver
         }
 
         $field->setAttribute('name', $name);
+        $this->preventOptionRemoval($field);
         $this->validateOptions($field);
+    }
+
+    private function preventOptionRemoval(Model $field): void
+    {
+        $original = array_map(
+            static fn (array $option): string => (string) ($option['key'] ?? ''),
+            (array) $field->getOriginal('options'),
+        );
+        $current = array_map(
+            static fn (array $option): string => (string) ($option['key'] ?? ''),
+            (array) $field->getAttribute('options'),
+        );
+
+        foreach ($original as $key) {
+            if (! in_array($key, $current, true)) {
+                throw new InvalidArgumentException("Custom field option [{$key}] cannot be removed.");
+            }
+        }
     }
 
     private function validateOptions(Model $field): void
