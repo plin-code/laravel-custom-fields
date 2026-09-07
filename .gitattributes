@@ -4,10 +4,14 @@
 /.gitattributes     export-ignore
 /.gitignore         export-ignore
 /.editorconfig      export-ignore
+/.phpunit.cache     export-ignore
+/art                export-ignore
+/build              export-ignore
 /tests              export-ignore
 /phpunit.xml.dist   export-ignore
 /phpstan.neon.dist  export-ignore
 /pint.json          export-ignore
+/rector.php         export-ignore
 /testbench.yaml     export-ignore
 /workbench          export-ignore
 /.claude            export-ignore
@@ -15,3 +19,5 @@
 /CLAUDE.md          export-ignore
 /AGENTS.md          export-ignore
 /AGENTS_PACKAGE.md  export-ignore
+/PLAN.md            export-ignore
+/IMPLEMENTATION.md  export-ignore
