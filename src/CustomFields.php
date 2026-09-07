@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
+use PlinCode\CustomFields\Validation\ValueValidator;
 
 class CustomFields
 {
@@ -81,5 +82,16 @@ class CustomFields
     public function valueModel(): string
     {
         return config('laravel-custom-fields.models.custom_field_value');
+    }
+
+    public function validator(): ValueValidator
+    {
+        return app(ValueValidator::class);
+    }
+
+    /** @param array<string, mixed> $values */
+    public function validate(Model $model, array $values, bool $complete = false): void
+    {
+        $this->validator()->validate($model, $values, $complete);
     }
 }

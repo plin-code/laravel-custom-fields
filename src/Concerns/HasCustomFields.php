@@ -43,6 +43,7 @@ trait HasCustomFields
 
     public function setCustomField(string $slug, mixed $value): void
     {
+        CustomFields::validate($this, [$slug => $value]);
         $field = $this->customFieldDefinition($slug);
         $model = CustomFields::valueModel();
         $row = $model::query()->firstOrNew([

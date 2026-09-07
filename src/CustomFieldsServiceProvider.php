@@ -6,6 +6,7 @@ namespace PlinCode\CustomFields;
 
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
+use PlinCode\CustomFields\Types\MultiSelectType;
 use PlinCode\CustomFields\Types\NumberType;
 use PlinCode\CustomFields\Types\SelectType;
 use PlinCode\CustomFields\Types\TextType;
@@ -22,7 +23,7 @@ class CustomFieldsServiceProvider extends ServiceProvider
         $this->app->singleton(CustomFields::class);
 
         $this->app->afterResolving(CustomFields::class, function (CustomFields $manager): void {
-            foreach ([TextType::class, NumberType::class, SelectType::class] as $type) {
+            foreach ([TextType::class, NumberType::class, SelectType::class, MultiSelectType::class] as $type) {
                 try {
                     $manager->registerType($type);
                 } catch (InvalidArgumentException) {
