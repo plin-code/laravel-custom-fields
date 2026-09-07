@@ -4,6 +4,5 @@ parameters:
         - src
         - config
         - database
+        - workbench
     tmpDir: build/phpstan
-    excludePaths:
-        - src/Concerns/HasCustomFields.php

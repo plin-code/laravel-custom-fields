@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace PlinCode\CustomFields;
 
-use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Types\BooleanType;
 use PlinCode\CustomFields\Types\DateTimeType;
@@ -18,21 +17,73 @@ use PlinCode\CustomFields\Types\SelectType;
 use PlinCode\CustomFields\Types\TextareaType;
 use PlinCode\CustomFields\Types\TextType;
 use PlinCode\CustomFields\Types\UrlType;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class CustomFieldsServiceProvider extends ServiceProvider
+class CustomFieldsServiceProvider extends PackageServiceProvider
 {
     /**
-     * Register any application services.
+     * The package name, used as the config key, the translation namespace
+     * and the prefix of every publish tag.
      */
-    public function register(): void
+    private const string PACKAGE_NAME = 'laravel-custom-fields';
+
+    /**
+     * The field types registered on the manager the first time it is resolved.
+     */
+    private const array BUILT_IN_TYPES = [
+        TextType::class,
+        TextareaType::class,
+        EmailType::class,
+        UrlType::class,
+        PhoneType::class,
+        NumberType::class,
+        DecimalType::class,
+        BooleanType::class,
+        DateType::class,
+        DateTimeType::class,
+        SelectType::class,
+        MultiSelectType::class,
+    ];
+
+    public function configurePackage(Package $package): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/laravel-custom-fields.php', 'laravel-custom-fields');
+        $package
+            ->name(self::PACKAGE_NAME)
+            ->hasConfigFile(self::PACKAGE_NAME)
+            ->hasTranslations()
+            ->hasMigrations([
+                '2026_01_01_000000_create_custom_fields_table',
+                '2026_01_01_000001_create_custom_field_values_table',
+            ]);
+    }
+
+    /**
+     * Keep the package short name equal to the package name.
+     *
+     * Package tools strips the "laravel-" prefix by default, which would turn the
+     * translation namespace into "custom-fields" and the publish tags into
+     * "custom-fields-config" and "custom-fields-migrations".
+     */
+    public function newPackage(): Package
+    {
+        return new class extends Package
+        {
+            public function shortName(): string
+            {
+                return $this->name;
+            }
+        };
+    }
+
+    public function packageRegistered(): void
+    {
         $this->validateKeyConfiguration();
 
         $this->app->singleton(CustomFields::class);
 
         $this->app->afterResolving(CustomFields::class, function (CustomFields $manager): void {
-            foreach ([TextType::class, TextareaType::class, EmailType::class, UrlType::class, PhoneType::class, NumberType::class, DecimalType::class, BooleanType::class, DateType::class, DateTimeType::class, SelectType::class, MultiSelectType::class] as $type) {
+            foreach (self::BUILT_IN_TYPES as $type) {
                 try {
                     $manager->registerType($type);
                 } catch (InvalidArgumentException) {
@@ -42,36 +93,53 @@ class CustomFieldsServiceProvider extends ServiceProvider
         });
     }
 
-    private function validateKeyConfiguration(): void
-    {
-        foreach (['key_type', 'morph_key_type'] as $key) {
-            if (! in_array(config('laravel-custom-fields.'.$key), ['id', 'uuid', 'ulid'], true)) {
-                throw new InvalidArgumentException("Unsupported custom fields key type [{$key}].");
-            }
-        }
-    }
-
     /**
-     * Bootstrap any application services.
+     * Group the config file and the migrations under the umbrella publish tag as well,
+     * so "vendor:publish --tag=laravel-custom-fields" keeps publishing everything.
      */
-    public function boot(): void
+    public function packageBooted(): void
     {
-        $this->loadTranslationsFrom(__DIR__.'/../lang', 'laravel-custom-fields');
-
         if (! $this->app->runningInConsole()) {
             return;
         }
 
-        $this->publishes([
-            __DIR__.'/../config/laravel-custom-fields.php' => config_path('laravel-custom-fields.php'),
-        ], ['laravel-custom-fields', 'laravel-custom-fields-config']);
+        foreach ([self::PACKAGE_NAME.'-config', self::PACKAGE_NAME.'-migrations'] as $tag) {
+            $this->publishes(static::pathsToPublish(static::class, $tag), self::PACKAGE_NAME);
+        }
+    }
 
-        $this->publishes([
-            __DIR__.'/../lang' => $this->app->langPath('vendor/laravel-custom-fields'),
-        ], ['laravel-custom-fields', 'laravel-custom-fields-lang']);
+    /**
+     * Load and publish the translations.
+     *
+     * Package tools expects them under resources/lang, this package keeps them in lang,
+     * and the published tag has to stay "laravel-custom-fields-lang".
+     */
+    protected function bootPackageTranslations(): self
+    {
+        if (! $this->package->hasTranslations) {
+            return $this;
+        }
 
-        $this->publishesMigrations([
-            __DIR__.'/../database/migrations' => database_path('migrations'),
-        ], ['laravel-custom-fields', 'laravel-custom-fields-migrations']);
+        $packageTranslations = $this->package->basePath('/../lang');
+
+        $this->loadTranslationsFrom($packageTranslations, $this->package->shortName());
+
+        if ($this->app->runningInConsole()) {
+            $this->publishes(
+                [$packageTranslations => $this->app->langPath('vendor/'.$this->package->shortName())],
+                [self::PACKAGE_NAME, self::PACKAGE_NAME.'-lang'],
+            );
+        }
+
+        return $this;
+    }
+
+    private function validateKeyConfiguration(): void
+    {
+        foreach (['key_type', 'morph_key_type'] as $key) {
+            if (! in_array(config(self::PACKAGE_NAME.'.'.$key), ['id', 'uuid', 'ulid'], true)) {
+                throw new InvalidArgumentException("Unsupported custom fields key type [{$key}].");
+            }
+        }
     }
 }
