@@ -58,6 +58,10 @@ jobs:
       - name: Linter
         run: composer lint:check
 
+      - name: Rector
+        if: runner.os != 'Windows'
+        run: composer rector:check
+
       - name: Type Coverage
         if: runner.os != 'Windows'
         run: composer test:types
