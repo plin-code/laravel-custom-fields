@@ -19,14 +19,30 @@ function columnType(string $table, string $column): string
     return is_array($found) ? (string) $found['type_name'] : '';
 }
 
+/**
+ * Every driver names its column types differently, so a kind lists what SQLite,
+ * MySQL and PostgreSQL each report for it. Asserting the kind keeps the test
+ * about the key shape rather than about the vocabulary of one database.
+ *
+ * @return array<int, string>
+ */
+function columnTypesOf(string $kind): array
+{
+    return match ($kind) {
+        'integer' => ['integer', 'bigint', 'int8'],
+        'uuid' => ['varchar', 'char', 'uuid'],
+        'ulid' => ['varchar', 'char', 'bpchar'],
+    };
+}
+
 it('keeps integer keys on both tables by default', function (): void {
     CustomFields::registerEntity(Article::class, 'article');
     CustomField::create(['entity_type' => 'article', 'name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('rank', 5);
 
-    expect(columnType('custom_fields', 'id'))->toBe('integer')
-        ->and(columnType('custom_field_values', 'valuable_id'))->toBe('integer')
+    expect(columnType('custom_fields', 'id'))->toBeIn(columnTypesOf('integer'))
+        ->and(columnType('custom_field_values', 'valuable_id'))->toBeIn(columnTypesOf('integer'))
         ->and($article->customFieldValues()->first()?->getKey())->toBeInt()
         ->and((new CustomField)->getKeyType())->toBe('int')
         ->and((new CustomField)->getIncrementing())->toBeTrue();
@@ -37,6 +53,7 @@ it('stores the values of a uuid keyed host', function (): void {
     config()->set('laravel-custom-fields.morph_key_type', 'uuid');
     $this->rebuildPackageTables();
 
+    Schema::dropIfExists('uuid_documents');
     Schema::create('uuid_documents', function (Blueprint $table): void {
         $table->uuid('id')->primary();
         $table->string('title');
@@ -49,8 +66,8 @@ it('stores the values of a uuid keyed host', function (): void {
     $document->setCustomField('rank', 7);
     $row = $document->customFieldValues()->first();
 
-    expect(columnType('custom_fields', 'id'))->toBe('varchar')
-        ->and(columnType('custom_field_values', 'valuable_id'))->toBe('varchar')
+    expect(columnType('custom_fields', 'id'))->toBeIn(columnTypesOf('uuid'))
+        ->and(columnType('custom_field_values', 'valuable_id'))->toBeIn(columnTypesOf('uuid'))
         ->and(Str::isUuid((string) $field->getKey()))->toBeTrue()
         ->and(Str::isUuid((string) $row?->getKey()))->toBeTrue()
         ->and($row?->getAttribute('valuable_id'))->toBe($document->getKey())
@@ -62,6 +79,7 @@ it('stores the values of a ulid keyed host', function (): void {
     config()->set('laravel-custom-fields.morph_key_type', 'ulid');
     $this->rebuildPackageTables();
 
+    Schema::dropIfExists('ulid_documents');
     Schema::create('ulid_documents', function (Blueprint $table): void {
         $table->ulid('id')->primary();
         $table->string('title');
@@ -74,8 +92,8 @@ it('stores the values of a ulid keyed host', function (): void {
     $document->setCustomField('rank', 7);
     $row = $document->customFieldValues()->first();
 
-    expect(columnType('custom_fields', 'id'))->toBe('varchar')
-        ->and(columnType('custom_field_values', 'valuable_id'))->toBe('varchar')
+    expect(columnType('custom_fields', 'id'))->toBeIn(columnTypesOf('ulid'))
+        ->and(columnType('custom_field_values', 'valuable_id'))->toBeIn(columnTypesOf('ulid'))
         ->and(Str::isUlid((string) $field->getKey()))->toBeTrue()
         ->and(Str::isUlid((string) $row?->getKey()))->toBeTrue()
         ->and($row?->getAttribute('valuable_id'))->toBe($document->getKey())

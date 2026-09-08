@@ -235,6 +235,8 @@ class CustomFields
         $fields = $fieldModel::query()
             ->where('entity_type', $this->entityKey($model))
             ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('slug')
             ->get();
 
         return $fields;

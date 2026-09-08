@@ -776,6 +776,17 @@ on purpose, so a refactoring it proposes is read before it is taken:
 vendor/bin/rector process
 ```
 
+The suite runs against an in memory SQLite database by default. Point it at a server with
+`DB_DRIVER`, which is how the workflow exercises MySQL and PostgreSQL on every build:
+
+```bash
+DB_DRIVER=mysql DB_PORT=3306 DB_USERNAME=root vendor/bin/pest
+DB_DRIVER=pgsql DB_PORT=5432 DB_USERNAME=postgres DB_PASSWORD=secret vendor/bin/pest
+```
+
+`DB_HOST` and `DB_DATABASE` are read the same way and default to `127.0.0.1` and
+`custom_fields`.
+
 ## Contributing
 
 Thank you for considering contributing to Laravel Custom Fields! Please review our [contributing guide](.github/CONTRIBUTING.md) to get started.
