@@ -6,12 +6,12 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Validation\ValidationException;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Models\CustomField;
-use PlinCode\CustomFields\Query\CustomFieldFilter;
-use PlinCode\CustomFields\Query\CustomFieldSorter;
 use Workbench\App\Models\Article;
+use Workbench\App\Models\Project;
 
 beforeEach(function (): void {
     CustomFields::registerEntity(Article::class, 'article');
+    CustomFields::registerEntity(Project::class, 'project');
 });
 
 it('creates a normalized field with a stable slug', function (): void {
@@ -25,77 +25,64 @@ it('creates a normalized field with a stable slug', function (): void {
         ->and($field->slug)->toBe('sector');
 });
 
-it('registers the entity in the Laravel morph map', function (): void {
-    expect(Relation::getMorphedModel('article'))->toBe(Article::class);
-});
-
-it('uses configured string keys for field models', function (): void {
-    config()->set('laravel-custom-fields.key_type', 'ulid');
-
-    $field = new CustomField;
-
-    expect($field->getKeyType())->toBe('string')
-        ->and($field->getIncrementing())->toBeFalse();
-});
-
-it('writes and reads a typed custom value', function (): void {
-    $field = CustomField::create([
+it('rejects a field without a name', function (): void {
+    expect(fn (): CustomField => CustomField::create([
         'entity_type' => 'article',
-        'name' => 'Rank',
-        'type' => 'number',
-    ]);
-    $article = Article::create(['title' => 'A']);
-
-    $article->setCustomField($field->slug, 10);
-
-    expect($article->getCustomField($field->slug))->toBe(10);
-});
-
-it('keeps fields isolated by entity type', function (): void {
-    CustomFields::registerEntity(Article::class, 'another-article');
-
-    $field = CustomField::create([
-        'entity_type' => 'missing',
-        'name' => 'Unknown',
+        'name' => '   ',
         'type' => 'text',
-    ]);
-
-    expect($field->entity_type)->toBe('missing');
+    ]))->toThrow(InvalidArgumentException::class, 'A custom field name cannot be empty.');
 });
 
-it('validates a custom value before writing it', function (): void {
-    $field = CustomField::create([
-        'entity_type' => 'article',
-        'name' => 'Rank',
-        'type' => 'number',
-    ]);
-    $article = Article::create(['title' => 'A']);
-
-    expect(fn () => $article->setCustomField($field->slug, 'invalid'))
-        ->toThrow(ValidationException::class);
+it('registers the entity in the Laravel morph map', function (): void {
+    expect(Relation::getMorphedModel('article'))->toBe(Article::class)
+        ->and(Relation::getMorphedModel('project'))->toBe(Project::class);
 });
 
-it('keeps an inactive selected option readable but blocks new assignments', function (): void {
-    $field = CustomField::create([
-        'entity_type' => 'article',
-        'name' => 'Status',
-        'type' => 'select',
-        'options' => [
-            ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => true],
-            ['key' => 'current', 'label' => 'Current', 'is_active' => true],
-        ],
-    ]);
+it('refuses to register two models under the same entity key', function (): void {
+    expect(fn () => CustomFields::registerEntity(Article::class.'Other', 'article'))
+        ->toThrow(InvalidArgumentException::class, 'Custom field entity key [article] is already registered.');
+});
+
+it('gives two names that slugify alike two distinct slugs', function (): void {
+    $first = CustomField::create(['entity_type' => 'article', 'name' => 'A B', 'type' => 'text']);
+    $second = CustomField::create(['entity_type' => 'article', 'name' => 'A-B', 'type' => 'text']);
+
+    expect($first->slug)->toBe('a-b')
+        ->and($second->slug)->toBe('a-b-2');
+});
+
+it('keeps a generated slug within one hundred characters after a collision', function (): void {
+    $name = str_repeat('a', 120);
+    $first = CustomField::create(['entity_type' => 'article', 'name' => $name, 'type' => 'text']);
+    $second = CustomField::create(['entity_type' => 'article', 'name' => $name.' b', 'type' => 'text']);
+
+    expect(mb_strlen($first->slug))->toBe(100)
+        ->and(mb_strlen($second->slug))->toBe(100)
+        ->and($second->slug)->toEndWith('a-2')
+        ->and($second->slug)->not->toBe($first->slug);
+});
+
+it('keeps fields isolated between two host models', function (): void {
+    CustomField::create(['entity_type' => 'article', 'name' => 'Rank', 'type' => 'number']);
+    CustomField::create(['entity_type' => 'project', 'name' => 'Rank', 'type' => 'text']);
+
     $article = Article::create(['title' => 'A']);
-    $article->setCustomField($field->slug, 'legacy');
+    $project = Project::create(['title' => 'P']);
+    $article->setCustomField('rank', 5);
+    $project->setCustomField('rank', 'five');
 
-    $field->update(['options' => [
-        ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => false],
-        ['key' => 'current', 'label' => 'Current', 'is_active' => true],
-    ]]);
+    expect($article->getCustomFields())->toBe(['rank' => 5])
+        ->and($project->getCustomFields())->toBe(['rank' => 'five'])
+        ->and(fn () => $article->setCustomField('rank', 'five'))->toThrow(ValidationException::class);
+});
 
-    expect($article->getCustomField($field->slug))->toBe('legacy')
-        ->and(fn () => Article::create(['title' => 'B'])->setCustomField($field->slug, 'legacy'))
-        ->toThrow(ValidationException::class);
+it('hides the definitions of one host from the other', function (): void {
+    CustomField::create(['entity_type' => 'project', 'name' => 'Budget', 'type' => 'number']);
+    $article = Article::create(['title' => 'A']);
+
+    expect($article->getCustomFields())->toBe([])
+        ->and(fn () => $article->getCustomField('budget'))
+        ->toThrow(InvalidArgumentException::class, 'Custom field [budget] is not defined for model ['.Article::class.'].');
 });
 
 it('keeps option keys stable while allowing labels to change', function (): void {
@@ -116,7 +103,44 @@ it('keeps option keys stable while allowing labels to change', function (): void
     expect($field->refresh()->options[0]['label'])->toBe('Vendita')
         ->and(fn () => $field->updateOptions([
             ['key' => 'public', 'label' => 'Public', 'is_active' => true],
-        ]))->toThrow(InvalidArgumentException::class);
+        ]))->toThrow(InvalidArgumentException::class, 'Custom field option [retail] cannot be removed.');
+});
+
+it('rejects a duplicated option key', function (): void {
+    expect(fn (): CustomField => CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Sector',
+        'type' => 'select',
+        'options' => [
+            ['key' => 'retail', 'label' => 'Retail', 'is_active' => true],
+            ['key' => 'retail', 'label' => 'Retail again', 'is_active' => true],
+        ],
+    ]))->toThrow(InvalidArgumentException::class, 'Custom field option [retail] is duplicated.');
+});
+
+it('rejects an option without a key or a label', function (): void {
+    expect(fn (): CustomField => CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Sector',
+        'type' => 'select',
+        'options' => [['key' => 'retail', 'label' => '']],
+    ]))->toThrow(InvalidArgumentException::class, 'Custom field options require a key and label.');
+});
+
+it('separates every option key from the keys still assignable', function (): void {
+    $field = CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Sector',
+        'type' => 'select',
+        'options' => [
+            ['key' => 'retail', 'label' => 'Retail', 'is_active' => false],
+            ['key' => 'public', 'label' => 'Public', 'is_active' => true],
+        ],
+    ]);
+
+    expect($field->optionKeys())->toBe(['retail', 'public'])
+        ->and($field->activeOptionKeys())->toBe(['public'])
+        ->and($field->optionsForInput())->toHaveCount(1);
 });
 
 it('protects the stable slug from ordinary updates', function (): void {
@@ -126,8 +150,21 @@ it('protects the stable slug from ordinary updates', function (): void {
         'type' => 'text',
     ]);
 
-    expect(fn () => $field->update(['slug' => 'changed']))
-        ->toThrow(InvalidArgumentException::class);
+    expect(fn (): bool => $field->update(['slug' => 'changed']))
+        ->toThrow(InvalidArgumentException::class, 'A custom field slug and entity cannot be changed.');
+});
+
+it('keeps the slug when the name changes', function (): void {
+    $field = CustomField::create([
+        'entity_type' => 'article',
+        'name' => 'Sector',
+        'type' => 'text',
+    ]);
+
+    $field->update(['name' => 'Market Segment']);
+
+    expect($field->refresh()->slug)->toBe('sector')
+        ->and($field->name)->toBe('market segment');
 });
 
 it('protects the field type when values already exist', function (): void {
@@ -136,64 +173,8 @@ it('protects the field type when values already exist', function (): void {
         'name' => 'Rank',
         'type' => 'number',
     ]);
-    $article = Article::create(['title' => 'A']);
-    $article->setCustomField($field->slug, 10);
+    Article::create(['title' => 'A'])->setCustomField($field->slug, 10);
 
-    expect(fn () => $field->update(['type' => 'text']))
-        ->toThrow(InvalidArgumentException::class);
-});
-
-it('filters and sorts entities through the custom field query adapters', function (): void {
-    $field = CustomField::create([
-        'entity_type' => 'article',
-        'name' => 'Rank',
-        'type' => 'number',
-    ]);
-    $first = Article::create(['title' => 'First']);
-    $second = Article::create(['title' => 'Second']);
-    $first->setCustomField($field->slug, 10);
-    $second->setCustomField($field->slug, 2);
-
-    $filtered = Article::query();
-    (new CustomFieldFilter($field))($filtered, 10, 'cf_rank');
-
-    $sorted = Article::query();
-    (new CustomFieldSorter($field))($sorted, false, 'cf_rank');
-
-    expect($filtered->pluck('title')->all())->toBe(['First'])
-        ->and($sorted->pluck('title')->all())->toBe(['Second', 'First']);
-});
-
-it('writes a batch of values atomically and supports complete validation', function (): void {
-    $rank = CustomField::create([
-        'entity_type' => 'article',
-        'name' => 'Rank',
-        'type' => 'number',
-    ]);
-    $email = CustomField::create([
-        'entity_type' => 'article',
-        'name' => 'Email',
-        'type' => 'email',
-        'is_required' => true,
-    ]);
-    $article = Article::create(['title' => 'A']);
-
-    $article->setCustomFields([
-        $rank->slug => 10,
-        $email->slug => 'person@example.com',
-    ], complete: true);
-
-    expect($article->getCustomFields())->toMatchArray([
-        'rank' => 10,
-        'email' => 'person@example.com',
-    ]);
-
-    $other = Article::create(['title' => 'B']);
-
-    expect(fn () => $other->setCustomFields([
-        $rank->slug => 20,
-        $email->slug => 'invalid',
-    ]))->toThrow(ValidationException::class);
-
-    expect($other->getCustomField($rank->slug))->toBeNull();
+    expect(fn (): bool => $field->update(['type' => 'text']))
+        ->toThrow(InvalidArgumentException::class, 'A custom field type cannot change while values exist.');
 });

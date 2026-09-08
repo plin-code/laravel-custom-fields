@@ -13,3 +13,20 @@ arch('it will not use dd(), ddd(), env(), or exit()')
 arch('the package source declares strict types')
     ->expect('PlinCode\CustomFields')
     ->toUseStrictTypes();
+
+arch('the package stays headless')
+    ->expect('PlinCode\CustomFields')
+    ->not->toUse([
+        'Illuminate\Http\Request',
+        'Illuminate\Routing\Controller',
+        'Illuminate\Support\Facades\Route',
+        'Illuminate\Support\Facades\View',
+    ]);
+
+arch('every shipped type implements the field type contract')
+    ->expect('PlinCode\CustomFields\Types')
+    ->toImplement('PlinCode\CustomFields\Contracts\FieldType');
+
+arch('the package exceptions are throwable')
+    ->expect('PlinCode\CustomFields\Exceptions')
+    ->toExtend('Exception');
