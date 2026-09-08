@@ -24,26 +24,72 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * The suite always runs against an in memory database.
-     *
-     * Without this, a database/database.sqlite left behind by composer build
-     * makes Testbench prefer the file, and the package migrations it published
-     * into the skeleton then collide with the ones loaded below.
+     * The suite runs against an in memory database unless DB_DRIVER asks for
+     * one of the servers, which is how the workflow exercises MySQL and
+     * PostgreSQL. Pinning the connection also keeps a database/database.sqlite
+     * left behind by composer build from making Testbench prefer the file,
+     * whose published migrations would then collide with the ones loaded below.
      */
     protected function defineEnvironment($app): void
     {
         $app['config']->set('database.default', 'testing');
-        $app['config']->set('database.connections.testing', [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-            'prefix' => '',
-            'foreign_key_constraints' => true,
-        ]);
+        $app['config']->set('database.connections.testing', $this->connectionConfiguration());
     }
 
+    /** @return array<string, mixed> */
+    protected function connectionConfiguration(): array
+    {
+        return match ($this->fromEnvironment('DB_DRIVER', 'sqlite')) {
+            'mysql' => [
+                'driver' => 'mysql',
+                'host' => $this->fromEnvironment('DB_HOST', '127.0.0.1'),
+                'port' => $this->fromEnvironment('DB_PORT', '3306'),
+                'database' => $this->fromEnvironment('DB_DATABASE', 'custom_fields'),
+                'username' => $this->fromEnvironment('DB_USERNAME', 'root'),
+                'password' => $this->fromEnvironment('DB_PASSWORD', ''),
+                'charset' => 'utf8mb4',
+                'collation' => 'utf8mb4_unicode_ci',
+                'prefix' => '',
+            ],
+            'pgsql' => [
+                'driver' => 'pgsql',
+                'host' => $this->fromEnvironment('DB_HOST', '127.0.0.1'),
+                'port' => $this->fromEnvironment('DB_PORT', '5432'),
+                'database' => $this->fromEnvironment('DB_DATABASE', 'custom_fields'),
+                'username' => $this->fromEnvironment('DB_USERNAME', 'postgres'),
+                'password' => $this->fromEnvironment('DB_PASSWORD', ''),
+                'charset' => 'utf8',
+                'prefix' => '',
+                'search_path' => 'public',
+            ],
+            default => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+                'foreign_key_constraints' => true,
+            ],
+        };
+    }
+
+    /** Reads a workflow variable without the env() helper the arch test forbids. */
+    protected function fromEnvironment(string $key, string $default): string
+    {
+        $value = getenv($key);
+
+        return $value === false || $value === '' ? $default : $value;
+    }
+
+    /**
+     * The host tables belong to the fixtures rather than to the package.
+     *
+     * An in memory database starts empty for every test, while a MySQL or a
+     * PostgreSQL server keeps what the previous test left, so they are dropped
+     * on both ends of the test rather than only created.
+     */
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->dropHostTables();
 
         Schema::create('authors', function (Blueprint $table): void {
             $table->id();
@@ -62,6 +108,15 @@ abstract class TestCase extends Orchestra
             $table->string('title');
             $table->timestamps();
         });
+
+        $this->beforeApplicationDestroyed(fn () => $this->dropHostTables());
+    }
+
+    protected function dropHostTables(): void
+    {
+        foreach (['articles', 'projects', 'authors'] as $table) {
+            Schema::dropIfExists($table);
+        }
     }
 
     /**

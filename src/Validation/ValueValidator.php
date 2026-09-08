@@ -24,6 +24,8 @@ class ValueValidator
         /** @var array<string, Model> $definitions */
         $definitions = $fieldModel::query()
             ->where('entity_type', CustomFields::entityKey($model))
+            ->orderBy('sort_order')
+            ->orderBy('slug')
             ->get()
             ->keyBy(static fn (Model $field): string => (string) $field->getAttribute('slug'))
             ->all();

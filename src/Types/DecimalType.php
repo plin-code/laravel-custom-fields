@@ -23,9 +23,20 @@ class DecimalType extends NumberType
         return $value === null ? null : (string) $value;
     }
 
+    /**
+     * MySQL and PostgreSQL hand back the full scale of the decimal column while
+     * SQLite returns what was written, so the fraction is trimmed and the same
+     * stored value reads the same on every driver.
+     */
     public function deserialize(mixed $value, Model $field): mixed
     {
-        return $value === null ? null : (string) $value;
+        if ($value === null) {
+            return null;
+        }
+
+        $value = (string) $value;
+
+        return str_contains($value, '.') ? rtrim(rtrim($value, '0'), '.') : $value;
     }
 
     public function rules(Model $field): array

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- The test suite runs against MySQL 8.4 and PostgreSQL 17 on every build, alongside the
+  SQLite matrix. `DB_DRIVER` points it at a server locally.
+
+### Fixed
+
+- `getCustomFields()` and the generated filters and sorts come back ordered by
+  `sort_order` and then by slug. The order was whatever the database returned, so the same
+  code gave a different order on SQLite and on a server, and the `sort_order` column was
+  never read.
+- A `decimal` value reads back the same on every driver. MySQL and PostgreSQL return the
+  full scale of the column, so a stored `12.5` came back as `12.500000` while SQLite gave
+  `12.5`.
+
 ## 0.1.0 - 2026-09-07
 
 First public release.

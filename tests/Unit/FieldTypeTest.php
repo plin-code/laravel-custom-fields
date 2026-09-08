@@ -108,9 +108,11 @@ it('returns the default of the type when nothing is stored', function (): void {
     typedField('multiselect', [['key' => 'alpha', 'label' => 'Alpha', 'is_active' => true]]);
     $article = Article::create(['title' => 'A']);
 
+    // Definitions come back ordered by sort_order and then by slug, so the
+    // order is the same on every driver rather than the order rows went in.
     expect($article->getCustomFields())->toBe([
-        'number-field' => null,
         'multiselect-field' => [],
+        'number-field' => null,
     ]);
 });
 

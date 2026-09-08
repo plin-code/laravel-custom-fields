@@ -198,7 +198,7 @@ trait HasCustomFields
             $query->where('is_active', true);
         }
 
-        return $query->get()
+        return $query->orderBy('sort_order')->orderBy('slug')->get()
             ->keyBy(static fn (CustomField $field): string => (string) $field->getAttribute('slug'))
             ->all();
     }

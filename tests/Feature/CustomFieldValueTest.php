@@ -44,8 +44,8 @@ it('writes a batch of values atomically', function (): void {
     ], complete: true);
 
     expect($article->getCustomFields())->toBe([
-        'rank' => 10,
         'email' => 'person@example.com',
+        'rank' => 10,
     ]);
 });
 
