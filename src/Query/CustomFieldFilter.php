@@ -270,7 +270,7 @@ class CustomFieldFilter implements Filter
      */
     private function castMany(array $values): array
     {
-        return array_values(array_map(fn (mixed $value): mixed => $this->cast($value), $values));
+        return array_values(array_map($this->cast(...), $values));
     }
 
     private function text(mixed $value): string
@@ -285,7 +285,7 @@ class CustomFieldFilter implements Filter
     private function describe(mixed $value): string
     {
         if (is_array($value)) {
-            return implode(',', array_map(fn (mixed $item): string => $this->describe($item), $value));
+            return implode(',', array_map($this->describe(...), $value));
         }
 
         return is_scalar($value) ? (string) $value : get_debug_type($value);

@@ -7,7 +7,7 @@ namespace PlinCode\CustomFields\Events;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use PlinCode\CustomFields\Models\CustomFieldValue;
 
-final class CustomFieldValueSaved implements ShouldDispatchAfterCommit
+final readonly class CustomFieldValueSaved implements ShouldDispatchAfterCommit
 {
-    public function __construct(public readonly CustomFieldValue $value) {}
+    public function __construct(public CustomFieldValue $value) {}
 }
