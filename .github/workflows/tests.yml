@@ -139,6 +139,9 @@ jobs:
           composer update --prefer-stable --prefer-dist --no-interaction --no-progress --no-scripts
           composer run prepare
 
+      # Serial on purpose. composer test:unit runs Pest in parallel, and the
+      # processes would create and drop the same tables in the one database the
+      # service container provides.
       - name: Test Suite
         env:
           DB_DRIVER: ${{ matrix.driver }}
@@ -147,4 +150,4 @@ jobs:
           DB_DATABASE: custom_fields
           DB_USERNAME: ${{ matrix.username }}
           DB_PASSWORD: ${{ matrix.password }}
-        run: composer test:unit
+        run: vendor/bin/pest

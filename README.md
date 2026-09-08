@@ -785,7 +785,9 @@ DB_DRIVER=pgsql DB_PORT=5432 DB_USERNAME=postgres DB_PASSWORD=secret vendor/bin/
 ```
 
 `DB_HOST` and `DB_DATABASE` are read the same way and default to `127.0.0.1` and
-`custom_fields`.
+`custom_fields`. Run Pest directly rather than through `composer test:unit` when you point
+it at a server: that script runs in parallel, and the processes would create and drop the
+same tables in the same database.
 
 ## Contributing
 
