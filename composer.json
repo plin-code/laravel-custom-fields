@@ -94,6 +94,7 @@
         "test": [
             "@analyse",
             "@lint:check",
+            "@rector:check",
             "@test:types",
             "@test:unit"
         ],

@@ -758,14 +758,22 @@ the filter that serves it, since the built in filter refuses an operation it doe
 composer test
 ```
 
-That runs static analysis, the formatting check, the type coverage check and the test
-suite. Each step is also available on its own:
+That runs static analysis, the formatting check, the refactoring check, the type coverage
+check and the test suite. Each step is also available on its own:
 
 ```bash
-composer analyse     # PHPStan
-composer lint:check  # Pint, in check mode
-composer test:types  # Pest type coverage
-composer test:unit   # Pest
+composer analyse       # PHPStan
+composer lint:check    # Pint, in check mode
+composer rector:check  # Rector, as a dry run
+composer test:types    # Pest type coverage
+composer test:unit     # Pest
+```
+
+`composer lint` applies the formatting rather than checking it. Rector has no apply script
+on purpose, so a refactoring it proposes is read before it is taken:
+
+```bash
+vendor/bin/rector process
 ```
 
 ## Contributing
