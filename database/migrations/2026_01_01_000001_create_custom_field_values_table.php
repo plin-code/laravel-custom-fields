@@ -26,7 +26,7 @@ return new class extends Migration
                 $table->foreignId('custom_field_id')->constrained($fieldsTable)->cascadeOnDelete();
             }
 
-            match (config('laravel-custom-fields.morph_key_type', 'uuid')) {
+            match (config('laravel-custom-fields.morph_key_type', 'id')) {
                 'uuid' => $table->uuidMorphs('valuable'),
                 'ulid' => $table->ulidMorphs('valuable'),
                 default => $table->morphs('valuable'),
