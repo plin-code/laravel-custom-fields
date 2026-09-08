@@ -88,6 +88,7 @@ abstract class TestCase extends Orchestra
      */
     protected function defineDatabaseMigrations(): void
     {
+        $this->dropLeftoverTables();
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->dropHostTables();
 
@@ -117,6 +118,33 @@ abstract class TestCase extends Orchestra
         foreach (['articles', 'projects', 'authors'] as $table) {
             Schema::dropIfExists($table);
         }
+    }
+
+    /**
+     * Clears whatever a previous run left on a server.
+     *
+     * An in memory database has nothing to clear. A MySQL or a PostgreSQL
+     * server keeps the tables of a run that was interrupted, and the migrator
+     * would then try to create them again, so every later test fails on a
+     * schema it never made.
+     */
+    protected function dropLeftoverTables(): void
+    {
+        if ($this->fromEnvironment('DB_DRIVER', 'sqlite') === 'sqlite') {
+            return;
+        }
+
+        foreach ([
+            'custom_field_values',
+            'custom_fields',
+            'uuid_documents',
+            'ulid_documents',
+            'migrations',
+        ] as $table) {
+            Schema::dropIfExists($table);
+        }
+
+        $this->dropHostTables();
     }
 
     /**
