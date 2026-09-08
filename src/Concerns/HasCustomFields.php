@@ -16,7 +16,7 @@ use PlinCode\CustomFields\Models\CustomFieldValue;
 trait HasCustomFields
 {
     /** @var array<int, string> */
-    private const STORAGE_COLUMNS = [
+    private const array STORAGE_COLUMNS = [
         'value_string',
         'value_text',
         'value_integer',
@@ -134,6 +134,11 @@ trait HasCustomFields
     }
 
     /**
+     * Equality lookup on one active definition. The value reaches the storage
+     * column through the field type, so the scope compares what a write stores
+     * and what a request filter compares. A field stored as json is matched by
+     * containment, because equality against a json array never holds.
+     *
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
@@ -141,10 +146,21 @@ trait HasCustomFields
     {
         $field = $this->customFieldDefinition($slug);
         $fieldKey = $field->getKey();
-        $column = $field->fieldType()->storageColumn();
+        $type = $field->fieldType();
+        $column = $type->storageColumn();
+        $json = $column === 'value_json';
+        $comparable = $json ? $value : $type->serialize($value, $field);
 
-        return $query->whereHas('customFieldValues', function (Builder $inner) use ($fieldKey, $column, $value): void {
-            $inner->where('custom_field_id', $fieldKey)->where($column, $value);
+        return $query->whereHas('customFieldValues', function (Builder $inner) use ($fieldKey, $column, $comparable, $json): void {
+            $inner->where('custom_field_id', $fieldKey);
+
+            if ($json) {
+                $inner->whereJsonContains($column, $comparable);
+
+                return;
+            }
+
+            $inner->where($column, $comparable);
         });
     }
 
