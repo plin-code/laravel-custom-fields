@@ -29,7 +29,7 @@
         "spatie/laravel-query-builder": "^7.3.1"
     },
     "require-dev": {
-        "driftingly/rector-laravel": "^2.0",
+        "driftingly/rector-laravel": "^2.6",
         "larastan/larastan": "^3.9",
         "laravel/pao": "^1.0",
         "laravel/pint": "^1.29",
@@ -42,7 +42,7 @@
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
-        "rector/rector": "^2.0"
+        "rector/rector": "^2.6"
     },
     "autoload": {
         "psr-4": {
