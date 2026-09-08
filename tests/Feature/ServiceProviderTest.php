@@ -8,12 +8,35 @@ use PlinCode\CustomFields\CustomFieldsServiceProvider;
 use PlinCode\CustomFields\Facades\CustomFields as CustomFieldsFacade;
 use PlinCode\CustomFields\Types\TextType;
 
+/**
+ * Separators are normalised so the expectations read the same on Windows.
+ *
+ * Package tools joins its base path to a directory that already starts with a
+ * separator, so a published path arrives as src\/../config on Windows. Both the
+ * backslashes and the doubled separator have to go.
+ */
+function normalisePath(string $path): string
+{
+    return (string) preg_replace('#/+#', '/', str_replace('\\', '/', $path));
+}
+
 /** @return array<int, string> */
 function publishedPaths(string $tag): array
 {
+    $root = normalisePath(dirname(__DIR__, 2)).'/';
+
     return array_map(
-        static fn (string $path): string => str_replace([dirname(__DIR__, 2).DIRECTORY_SEPARATOR, 'src/../'], '', $path),
+        static fn (string $path): string => str_replace([$root, 'src/../'], '', normalisePath($path)),
         array_keys(ServiceProvider::pathsToPublish(CustomFieldsServiceProvider::class, $tag)),
+    );
+}
+
+/** @return array<int, string> */
+function publishedTargets(string $tag): array
+{
+    return array_map(
+        'normalisePath',
+        array_values(ServiceProvider::pathsToPublish(CustomFieldsServiceProvider::class, $tag)),
     );
 }
 
@@ -52,7 +75,7 @@ it('publishes only the config file under the config tag', function (): void {
 
 it('publishes only the translations under the lang tag', function (): void {
     expect(publishedPaths('laravel-custom-fields-lang'))->toBe(['lang'])
-        ->and(ServiceProvider::pathsToPublish(CustomFieldsServiceProvider::class, 'laravel-custom-fields-lang'))
+        ->and(publishedTargets('laravel-custom-fields-lang'))
         ->each->toEndWith('lang/vendor/laravel-custom-fields');
 });
 
