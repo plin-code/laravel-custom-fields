@@ -70,16 +70,19 @@ class ValueValidator
     public function validate(Model $model, array $values, bool $complete = false, ?array $definitions = null, ?array $stored = null): void
     {
         $definitions ??= $this->definitions($model);
-        $rules = $this->rules($model, $complete, $definitions);
         $stored ??= $this->storedValues($model, $definitions);
 
-        $data = $complete
-            ? $values + array_intersect_key($stored, $rules)
-            : $values;
+        /**
+         * The type rules only ever run over the submitted values. A stored value
+         * was already validated when it was written, and a type is free to read
+         * back a shape it would not accept as input, so replaying the input
+         * rules over it would reject values the package itself produced.
+         */
+        $rules = array_intersect_key($this->rules($model, false, $definitions), $values);
 
-        $validator = Validator::make($data, $rules, [], $this->attributeNames($definitions));
+        $validator = Validator::make($values, $rules, [], $this->attributeNames($definitions));
 
-        $validator->after(function (ValidatorContract $validator) use ($values, $definitions, $stored): void {
+        $validator->after(function (ValidatorContract $validator) use ($values, $definitions, $stored, $complete): void {
             foreach ($values as $key => $value) {
                 $slug = (string) $key;
                 $field = $definitions[$slug] ?? null;
@@ -100,9 +103,53 @@ class ValueValidator
 
                 $this->validateOptions($validator, $field, $slug, $value, $stored[$slug] ?? null);
             }
+
+            if ($complete) {
+                $this->validateRequired($validator, $definitions, $values, $stored);
+            }
         });
 
         $validator->validate();
+    }
+
+    /**
+     * A required definition is satisfied by the value the record ends up with,
+     * whether that value arrives in this payload or is already stored. Presence
+     * is decided here rather than through a required rule, so the stored value
+     * never has to pass the input rules of its own type a second time.
+     *
+     * @param  array<string, Model>  $definitions
+     * @param  array<string, mixed>  $values
+     * @param  array<string, mixed>  $stored
+     */
+    private function validateRequired(ValidatorContract $validator, array $definitions, array $values, array $stored): void
+    {
+        foreach ($definitions as $slug => $field) {
+            if (! $field->getAttribute('is_active') || ! $field->getAttribute('is_required')) {
+                continue;
+            }
+
+            $value = array_key_exists($slug, $values) ? $values[$slug] : ($stored[$slug] ?? null);
+
+            if ($this->isFilled($value)) {
+                continue;
+            }
+
+            $validator->errors()->add($slug, (string) trans('validation.required', [
+                'attribute' => (string) $field->getAttribute('name'),
+            ]));
+        }
+    }
+
+    /** Mirrors how Laravel decides whether a value satisfies a required rule. */
+    private function isFilled(mixed $value): bool
+    {
+        return match (true) {
+            $value === null => false,
+            is_string($value) => trim($value) !== '',
+            is_array($value) => $value !== [],
+            default => true,
+        };
     }
 
     /**
