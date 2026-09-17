@@ -44,7 +44,7 @@ class CustomField extends Model
 
             $field->setAttribute($field->getKeyName(), config('laravel-custom-fields.key_type') === 'ulid'
                 ? (string) Str::ulid()
-                : (string) Str::uuid());
+                : (string) Str::uuid7());
         });
     }
 

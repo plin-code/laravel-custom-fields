@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.1.1 - 2026-09-17
+
+### Changed
+
+- With `key_type` set to `uuid`, both package tables now receive time ordered UUID v7 keys instead of random UUID v4 keys. Existing keys stay valid, the column type does not change.
+
 ## 0.1.0 - 2026-09-08
 
 First public release.

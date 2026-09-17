@@ -70,6 +70,8 @@ it('stores the values of a uuid keyed host', function (): void {
         ->and(columnType('custom_field_values', 'valuable_id'))->toBeIn(columnTypesOf('uuid'))
         ->and(Str::isUuid((string) $field->getKey()))->toBeTrue()
         ->and(Str::isUuid((string) $row?->getKey()))->toBeTrue()
+        ->and(substr((string) $field->getKey(), 14, 1))->toBe('7')
+        ->and(substr((string) $row?->getKey(), 14, 1))->toBe('7')
         ->and($row?->getAttribute('valuable_id'))->toBe($document->getKey())
         ->and($document->getCustomField('rank'))->toBe(7);
 });
