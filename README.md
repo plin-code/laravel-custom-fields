@@ -107,7 +107,7 @@ The package ships English and Italian validation messages under the
 | --- | --- | --- |
 | `tables.fields` | `custom_fields` | Table holding the field definitions. |
 | `tables.values` | `custom_field_values` | Table holding one row per field per record. |
-| `key_type` | `id` | Primary key type of both package tables. Accepts `id`, `uuid`, `ulid`. Must be chosen before migrating. |
+| `key_type` | `id` | Primary key type of both package tables. Accepts `id`, `uuid`, `ulid`. `uuid` generates UUID v7. Must be chosen before migrating. |
 | `morph_key_type` | `id` | Key type of the models that own custom fields, used for the `valuable_id` column. Accepts `id`, `uuid`, `ulid`. Must be chosen before migrating. |
 | `models.custom_field` | `PlinCode\CustomFields\Models\CustomField` | The definition model. Point it at your own subclass to add relations, casts, a global scope or a dedicated connection. |
 | `models.custom_field_value` | `PlinCode\CustomFields\Models\CustomFieldValue` | The value model. Same rule. |
