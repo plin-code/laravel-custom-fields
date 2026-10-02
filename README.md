@@ -36,6 +36,7 @@ authorization and no UI.
 - [Building a form](#building-a-form)
 - [Events](#events)
 - [Custom field types](#custom-field-types)
+- [AI guidelines (Laravel Boost)](#ai-guidelines-laravel-boost)
 - [Testing](#testing)
 
 ## Installation
@@ -751,6 +752,24 @@ The vocabulary of query operations is `equals`, `in`, `contains`, `greater_than`
 `less_than`, `between`, `is_null`, `is_not_null`, `contains_any`, `contains_all` and `sort`.
 A type may declare an operation outside that list, and then it is responsible for providing
 the filter that serves it, since the built in filter refuses an operation it does not know.
+
+## AI guidelines (Laravel Boost)
+
+This package ships AI guidelines and an agent skill for [Laravel Boost](https://github.com/laravel/boost),
+at the paths the Boost documentation gives package authors:
+
+- `resources/boost/guidelines/core.blade.php`, a short always in context brief on the
+  trait, entity registration, field definitions, the value API, the query helpers and the
+  config keys.
+- `resources/boost/skills/custom-fields-development/SKILL.md`, loaded on demand, covering
+  installation, making a model support custom fields, defining fields of every type, adding
+  a custom field type, validating values in a controller, building a form, and filtering and
+  sorting a listing.
+
+Install Boost 2.5 or higher with `composer require laravel/boost --dev` then
+`php artisan boost:install`, selecting this package when Boost asks which third party
+guidelines and skills to install. On an app that already has Boost installed,
+`php artisan boost:update --discover` offers the newly detected package.
 
 ## Testing
 
