@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Laravel Boost resources: a short guideline in `resources/boost/guidelines/core.blade.php`
+  and an on demand `custom-fields-development` skill in `resources/boost/skills`, so an
+  agent working in an application that uses the package knows the trait, the value API, the
+  query helpers, the config keys and how to add a field type. `laravel/boost` is suggested,
+  never required.
+- A test that parses both documents and checks every class, method, signature, config key,
+  field type, storage column, query operation, publish tag and artisan command they name
+  against the code, so the documents fail the build when the API changes under them.
+
 ## 0.1.1 - 2026-09-17
 
 ### Changed
