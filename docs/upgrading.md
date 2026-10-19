@@ -75,17 +75,18 @@ they do not reload the host, which no longer exists by then.
 
 Values for `equals`, `in`, `greater_than`, `less_than` and `between` are validated against
 the rules of the field type before they reach the query. A failing value, or an empty
-element inside a list such as `1,,2`, throws Spatie's `InvalidFilterValue`. Before,
+element inside a list such as `1,,2`, throws `InvalidFilterValueException`. Before,
 `?filter[cf_age]=abc` matched the records whose age is `0`, and a malformed date or decimal
 failed inside PostgreSQL with a 500. A filter with no value at all, `?filter[cf_age]=`, is
 turned into `null` by Laravel's `ConvertEmptyStringsToNull` middleware and ignored by
-Spatie; only an application without that middleware gets `InvalidFilterValue` for it. A
+Spatie; only an application without that middleware gets `InvalidFilterValueException` for it. A
 `select` filter with a key outside the options, a
 `boolean` filter such as `maybe` and a `number` filter such as `1.5` are refused too,
 instead of returning an empty result or a silently cast one.
 
-`InvalidFilterValue` is not an HTTP exception, so it renders as a 500 unless you map it to
-a 400, see [invalid filter values](querying.md#invalid-filter-values).
+`InvalidFilterValueException` extends Spatie's `InvalidFilterValue` and is an HTTP exception
+with status 400, so Laravel renders it as a 400 without a mapping, see
+[invalid filter values](querying.md#invalid-filter-values).
 
 ## Typed column indexes (0.7.0)
 

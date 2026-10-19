@@ -11,8 +11,8 @@ use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
+use PlinCode\CustomFields\Exceptions\InvalidFilterValueException;
 use PlinCode\CustomFields\Models\CustomField;
-use Spatie\QueryBuilder\Exceptions\InvalidFilterValue;
 use Spatie\QueryBuilder\Filters\Filter;
 
 /**
@@ -161,10 +161,6 @@ class CustomFieldFilter implements Filter
         $pattern = new Expression("? escape '".self::LIKE_ESCAPE."'");
         $items = array_map($this->text(...), $this->many($value));
 
-        if (in_array('', $items, true)) {
-            throw InvalidFilterValue::make($this->describe($value));
-        }
-
         $inner->where(function (Builder $group) use ($column, $pattern, $items): void {
             foreach ($items as $item) {
                 $group->orWhere($column, 'like', $pattern)
@@ -248,7 +244,7 @@ class CustomFieldFilter implements Filter
     private function single(mixed $value): mixed
     {
         if (is_array($value)) {
-            throw InvalidFilterValue::make($this->describe($value));
+            throw InvalidFilterValueException::make($this->describe($value));
         }
 
         return $value;
@@ -260,7 +256,7 @@ class CustomFieldFilter implements Filter
         $values = is_array($value) ? array_values($value) : explode(',', $this->text($value));
 
         if (count($values) !== 2) {
-            throw InvalidFilterValue::make($this->describe($value));
+            throw InvalidFilterValueException::make($this->describe($value));
         }
 
         return $this->castMany($values);
@@ -272,20 +268,18 @@ class CustomFieldFilter implements Filter
             return null;
         }
 
-        if ($value === '') {
-            throw InvalidFilterValue::make($this->describe($value));
-        }
+        $this->requireValue($value);
 
         $validator = Validator::make(['value' => $value], ['value' => $this->fieldType()->rules($this->field)]);
 
         if ($validator->fails()) {
-            throw InvalidFilterValue::make($this->describe($value));
+            throw InvalidFilterValueException::make($this->describe($value));
         }
 
         try {
             return $this->fieldType()->serialize($value, $this->field);
         } catch (InvalidFormatException) {
-            throw InvalidFilterValue::make($this->describe($value));
+            throw InvalidFilterValueException::make($this->describe($value));
         }
     }
 
@@ -295,16 +289,37 @@ class CustomFieldFilter implements Filter
      */
     private function castMany(array $values): array
     {
-        return array_values(array_map($this->cast(...), $values));
+        return array_values(array_map(function (mixed $value): mixed {
+            if ($value === null) {
+                throw InvalidFilterValueException::make($this->describe($value));
+            }
+
+            return $this->cast($value);
+        }, $values));
     }
 
     private function text(mixed $value): string
     {
         if (! is_scalar($value)) {
-            throw InvalidFilterValue::make($this->describe($value));
+            throw InvalidFilterValueException::make($this->describe($value));
         }
 
-        return (string) $value;
+        return $this->requireValue((string) $value);
+    }
+
+    /**
+     * @template T
+     *
+     * @param  T  $value
+     * @return T
+     */
+    private function requireValue(mixed $value): mixed
+    {
+        if ($value === '') {
+            throw InvalidFilterValueException::make($this->describe($value));
+        }
+
+        return $value;
     }
 
     private function describe(mixed $value): string

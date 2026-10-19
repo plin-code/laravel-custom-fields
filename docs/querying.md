@@ -137,7 +137,7 @@ Values for `equals`, `in`, `greater_than`, `less_than` and `between` are validat
 the `rules()` of the field type, then normalised through its `serialize()`, exactly like a
 write. A value that fails, an empty element inside a list, a list given to `greater_than`
 or `less_than`, and a `between` with anything other than two values all throw
-`Spatie\QueryBuilder\Exceptions\InvalidFilterValue`. So `filter[cf_age]=abc` on a `number`,
+`PlinCode\CustomFields\Exceptions\InvalidFilterValueException`. So `filter[cf_age]=abc` on a `number`,
 `filter[cf_date-of-birth]=2024-13-45`, `filter[cf_risk-level]=closed` on a `select` without
 that key, `filter[cf_age]=1,,2` and `filter[cf_date-of-birth:between]=,2024-01-31` are all
 refused instead of matching the wrong rows. An empty `contains` value, such as
@@ -148,19 +148,17 @@ validated this way.
 A filter sent with no value at all, such as `filter[cf_age]=`, is different. Laravel's
 `ConvertEmptyStringsToNull` middleware turns the empty query string value into `null`, and
 Spatie skips a filter whose value is `null`, so the filter is ignored silently. It is
-refused with `InvalidFilterValue` only when your application removes that middleware.
+refused with `InvalidFilterValueException` only when your application removes that middleware.
 
-Unlike `InvalidFilterQuery`, `InvalidFilterValue` is not an HTTP exception, so Laravel
-renders it as a 500 unless you map it. Map it to a 400 in `bootstrap/app.php`:
+A `null` element inside a list is refused too. Under the default middleware
+`filter[cf_age][]=` reaches the filter as `[null]`, and so does the empty bound of
+`filter[cf_age:between][]=1&filter[cf_age:between][]=`. Only a bare `null`, the whole
+filter value, is skipped.
 
-```php
-use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Http\JsonResponse;
-use Spatie\QueryBuilder\Exceptions\InvalidFilterValue;
-
-// inside withExceptions(function (Exceptions $exceptions) { ... })
-$exceptions->render(fn (InvalidFilterValue $e): JsonResponse => new JsonResponse(['message' => $e->getMessage()], 400));
-```
+`InvalidFilterValueException` extends Spatie's `InvalidFilterValue`, so an existing
+`catch (InvalidFilterValue)` keeps working, and it implements Symfony's
+`HttpExceptionInterface` with status 400, like Spatie's `InvalidFilterQuery`. Laravel
+renders it as a 400 response out of the box, with no mapping in `bootstrap/app.php`.
 
 A date or datetime filter value goes through the same normalisation as a stored value, so
 `filter[cf_date-of-birth]=03/02/1985` matches a record stored as `1985-03-02`, and a
