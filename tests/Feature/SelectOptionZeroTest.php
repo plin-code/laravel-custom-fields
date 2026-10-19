@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Models\CustomField;
-use Spatie\QueryBuilder\QueryBuilder;
 use Workbench\App\Models\Article;
 
 beforeEach(function (): void {
@@ -45,10 +43,5 @@ it('filters on the option key zero', function (): void {
     Article::create(['title' => 'Off'])->setCustomField('featured', '0');
     Article::create(['title' => 'On'])->setCustomField('featured', '1');
 
-    $titles = QueryBuilder::for(Article::class, Request::create('/?filter[cf_featured]=0'))
-        ->allowedFilters(...CustomFields::filtersFor(Article::class))
-        ->pluck('title')
-        ->all();
-
-    expect($titles)->toBe(['Off']);
+    expect(articleTitles('/?filter[cf_featured]=0'))->toBe(['Off']);
 });

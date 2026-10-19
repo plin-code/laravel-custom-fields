@@ -10,7 +10,6 @@ use PlinCode\CustomFields\Events\CustomFieldValueSaved;
 use PlinCode\CustomFields\Exceptions\ModelNotPersistedException;
 use PlinCode\CustomFields\Exceptions\UnknownCustomFieldException;
 use PlinCode\CustomFields\Facades\CustomFields;
-use PlinCode\CustomFields\Models\CustomField;
 use PlinCode\CustomFields\Models\CustomFieldValue;
 use Workbench\App\Models\Article;
 
@@ -18,14 +17,8 @@ beforeEach(function (): void {
     CustomFields::registerEntity(Article::class, 'article');
 });
 
-/** @param array<string, mixed> $attributes */
-function field(array $attributes): CustomField
-{
-    return CustomField::create($attributes + ['entity_type' => 'article', 'type' => 'text']);
-}
-
 it('writes and reads a typed custom value', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
 
     $article->setCustomField('rank', 10);
@@ -34,8 +27,8 @@ it('writes and reads a typed custom value', function (): void {
 });
 
 it('writes a batch of values atomically', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
-    field(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
     $article = Article::create(['title' => 'A']);
 
     $article->setCustomFields([
@@ -50,8 +43,8 @@ it('writes a batch of values atomically', function (): void {
 });
 
 it('writes nothing when one value of the batch is invalid', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
-    field(['name' => 'Email', 'type' => 'email']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email']);
     $article = Article::create(['title' => 'A']);
 
     expect(fn () => $article->setCustomFields(['rank' => 20, 'email' => 'invalid']))
@@ -60,7 +53,7 @@ it('writes nothing when one value of the batch is invalid', function (): void {
 });
 
 it('refuses a host that was never persisted before touching the database', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = new Article(['title' => 'A']);
 
     DB::enableQueryLog();
@@ -79,7 +72,7 @@ it('names the model in the error of an unknown slug', function (): void {
 });
 
 it('reports an unknown slug of a batch as a validation error', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
 
     try {
@@ -92,7 +85,7 @@ it('reports an unknown slug of a batch as a validation error', function (): void
 });
 
 it('removes the stored row when a value is set to null', function (string $type, mixed $value, mixed $default): void {
-    field(['name' => 'Thing', 'type' => $type, 'options' => [
+    articleField(['name' => 'Thing', 'type' => $type, 'options' => [
         ['key' => 'a', 'label' => 'A', 'is_active' => true],
     ]]);
     $article = Article::create(['title' => 'A']);
@@ -111,7 +104,7 @@ it('removes the stored row when a value is set to null', function (string $type,
 ]);
 
 it('keeps the row of a multiselect cleared to an empty selection', function (): void {
-    field(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
+    articleField(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
         ['key' => 'a', 'label' => 'A', 'is_active' => true],
     ]]);
     $article = Article::create(['title' => 'A']);
@@ -124,8 +117,8 @@ it('keeps the row of a multiselect cleared to an empty selection', function (): 
 });
 
 it('dispatches the value events on a write, a clear and a null', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
-    field(['name' => 'Notes', 'type' => 'text']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Notes', 'type' => 'text']);
     $article = Article::create(['title' => 'A']);
 
     Event::fake([CustomFieldValueSaved::class, CustomFieldValueDeleted::class]);
@@ -139,7 +132,7 @@ it('dispatches the value events on a write, a clear and a null', function (): vo
 });
 
 it('reads a deactivated definition only when the caller asks for it', function (): void {
-    $field = field(['name' => 'Legacy', 'type' => 'text']);
+    $field = articleField(['name' => 'Legacy', 'type' => 'text']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('legacy', 'kept');
 
@@ -153,7 +146,7 @@ it('reads a deactivated definition only when the caller asks for it', function (
 });
 
 it('clears the value of a deactivated definition without a flag', function (): void {
-    $field = field(['name' => 'Legacy', 'type' => 'text']);
+    $field = articleField(['name' => 'Legacy', 'type' => 'text']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('legacy', 'kept');
     $field->update(['is_active' => false]);
@@ -164,7 +157,7 @@ it('clears the value of a deactivated definition without a flag', function (): v
 });
 
 it('refuses to write to a deactivated definition', function (): void {
-    $field = field(['name' => 'Legacy', 'type' => 'text']);
+    $field = articleField(['name' => 'Legacy', 'type' => 'text']);
     $article = Article::create(['title' => 'A']);
     $field->update(['is_active' => false]);
 
@@ -178,7 +171,7 @@ it('refuses to write to a deactivated definition', function (): void {
 });
 
 it('serves a fresh relation after a write on the same instance', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
     $article->load('customFieldValues');
 
@@ -189,7 +182,7 @@ it('serves a fresh relation after a write on the same instance', function (): vo
 });
 
 it('filters hosts on a stored value through the model scope', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $first = Article::create(['title' => 'First']);
     $second = Article::create(['title' => 'Second']);
     $first->setCustomField('rank', 10);
@@ -199,9 +192,9 @@ it('filters hosts on a stored value through the model scope', function (): void 
 });
 
 it('writes a batch of three slugs in a constant number of queries', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
-    field(['name' => 'Email', 'type' => 'email']);
-    field(['name' => 'Notes', 'type' => 'text']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email']);
+    articleField(['name' => 'Notes', 'type' => 'text']);
     $article = Article::create(['title' => 'A']);
 
     DB::enableQueryLog();
@@ -218,8 +211,8 @@ it('writes a batch of three slugs in a constant number of queries', function ():
 });
 
 it('reads every value of a host in two queries', function (): void {
-    field(['name' => 'Rank', 'type' => 'number']);
-    field(['name' => 'Notes', 'type' => 'text']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Notes', 'type' => 'text']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomFields(['rank' => 1, 'notes' => 'x']);
 
@@ -235,7 +228,7 @@ it('reads every value of a host in two queries', function (): void {
 });
 
 it('ignores a value row that belongs to another host', function (): void {
-    $field = field(['name' => 'Rank', 'type' => 'number']);
+    $field = articleField(['name' => 'Rank', 'type' => 'number']);
     $first = Article::create(['title' => 'First']);
     $second = Article::create(['title' => 'Second']);
     $first->setCustomField('rank', 10);

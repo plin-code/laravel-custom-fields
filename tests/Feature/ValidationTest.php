@@ -4,19 +4,12 @@ declare(strict_types=1);
 
 use Illuminate\Validation\ValidationException;
 use PlinCode\CustomFields\Facades\CustomFields;
-use PlinCode\CustomFields\Models\CustomField;
 use Workbench\App\CustomFields\RatingType;
 use Workbench\App\Models\Article;
 
 beforeEach(function (): void {
     CustomFields::registerEntity(Article::class, 'article');
 });
-
-/** @param array<string, mixed> $attributes */
-function definition(array $attributes): CustomField
-{
-    return CustomField::create($attributes + ['entity_type' => 'article', 'type' => 'text']);
-}
 
 /** @return array<string, array<int, string>> */
 function errorsOf(Closure $callback): array
@@ -31,8 +24,8 @@ function errorsOf(Closure $callback): array
 }
 
 it('accepts a partial write that leaves a required field out', function (): void {
-    definition(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
 
     $article->setCustomField('rank', 3);
@@ -41,8 +34,8 @@ it('accepts a partial write that leaves a required field out', function (): void
 });
 
 it('accepts a complete write when the required field is already stored', function (): void {
-    definition(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('email', 'person@example.com');
 
@@ -55,7 +48,7 @@ it('accepts a complete write when the required field is already stored', functio
 });
 
 it('refuses a complete write that clears a required field', function (): void {
-    definition(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('email', 'person@example.com');
 
@@ -66,8 +59,8 @@ it('refuses a complete write that clears a required field', function (): void {
 
 it('keeps a stored value out of the input rules of its own type', function (): void {
     CustomFields::registerType(RatingType::class);
-    definition(['name' => 'Score', 'type' => 'rating']);
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Score', 'type' => 'rating']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('score', 4);
 
@@ -79,8 +72,8 @@ it('keeps a stored value out of the input rules of its own type', function (): v
 
 it('satisfies a required field of a type that reads back another shape', function (): void {
     CustomFields::registerType(RatingType::class);
-    definition(['name' => 'Score', 'type' => 'rating', 'is_required' => true]);
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Score', 'type' => 'rating', 'is_required' => true]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('score', 4);
 
@@ -91,8 +84,8 @@ it('satisfies a required field of a type that reads back another shape', functio
 });
 
 it('refuses a complete write when a required field was never stored', function (): void {
-    definition(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
 
     expect(errorsOf(fn () => $article->setCustomFields(['rank' => 3], complete: true)))
@@ -101,7 +94,7 @@ it('refuses a complete write when a required field was never stored', function (
 });
 
 it('validates a custom value before writing it', function (): void {
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
 
     expect(fn () => $article->setCustomField('rank', 'invalid'))
@@ -109,7 +102,7 @@ it('validates a custom value before writing it', function (): void {
 });
 
 it('names the field rather than the slug in an error message', function (): void {
-    definition(['name' => 'Data Di Nascita', 'type' => 'date', 'is_required' => true]);
+    articleField(['name' => 'Data Di Nascita', 'type' => 'date', 'is_required' => true]);
     $article = Article::create(['title' => 'A']);
 
     expect(errorsOf(fn () => $article->setCustomFields([], complete: true)))
@@ -117,7 +110,7 @@ it('names the field rather than the slug in an error message', function (): void
 });
 
 it('keeps an inactive selected option readable but blocks new assignments', function (): void {
-    $field = definition(['name' => 'Status', 'type' => 'select', 'options' => [
+    $field = articleField(['name' => 'Status', 'type' => 'select', 'options' => [
         ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => true],
         ['key' => 'current', 'label' => 'Current', 'is_active' => true],
     ]]);
@@ -135,7 +128,7 @@ it('keeps an inactive selected option readable but blocks new assignments', func
 });
 
 it('reports an inactive option in the locale of the request', function (): void {
-    $field = definition(['name' => 'Status', 'type' => 'select', 'options' => [
+    $field = articleField(['name' => 'Status', 'type' => 'select', 'options' => [
         ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => true],
         ['key' => 'current', 'label' => 'Current', 'is_active' => true],
     ]]);
@@ -152,7 +145,7 @@ it('reports an inactive option in the locale of the request', function (): void 
 });
 
 it('blocks a new assignment of an inactive option inside a multiselect', function (): void {
-    $field = definition(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
+    $field = articleField(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
         ['key' => 'legacy', 'label' => 'Legacy', 'is_active' => true],
         ['key' => 'current', 'label' => 'Current', 'is_active' => true],
     ]]);
@@ -173,7 +166,7 @@ it('blocks a new assignment of an inactive option inside a multiselect', functio
 });
 
 it('refuses an option key that was never defined', function (): void {
-    definition(['name' => 'Status', 'type' => 'select', 'options' => [
+    articleField(['name' => 'Status', 'type' => 'select', 'options' => [
         ['key' => 'current', 'label' => 'Current', 'is_active' => true],
     ]]);
     $article = Article::create(['title' => 'A']);
@@ -183,8 +176,8 @@ it('refuses an option key that was never defined', function (): void {
 });
 
 it('validates a payload through the manager without preloaded state', function (): void {
-    definition(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
-    definition(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $article = Article::create(['title' => 'A']);
     $article->setCustomField('email', 'person@example.com');
 
@@ -195,8 +188,8 @@ it('validates a payload through the manager without preloaded state', function (
 });
 
 it('builds rules for the active definitions only', function (): void {
-    definition(['name' => 'Rank', 'type' => 'number']);
-    definition(['name' => 'Legacy', 'type' => 'text', 'is_active' => false]);
+    articleField(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Legacy', 'type' => 'text', 'is_active' => false]);
     $validator = CustomFields::validator();
 
     expect(array_keys($validator->rules(Article::class)))->toBe(['rank'])
@@ -204,7 +197,7 @@ it('builds rules for the active definitions only', function (): void {
 });
 
 it('adds the required rule only to a complete validation', function (): void {
-    definition(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
+    articleField(['name' => 'Email', 'type' => 'email', 'is_required' => true]);
     $validator = CustomFields::validator();
 
     expect($validator->rules(Article::class))->toBe(['email' => ['nullable', 'email', 'max:255']])
