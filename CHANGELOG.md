@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.0 - 2026-10-19
+
+### Changed
+
+- Filter values from the request are validated against the field type's own rules before
+  they reach the query. A value that fails them, or an empty string, throws Spatie's
+  `InvalidFilterValue` (a 400). This applies to `equals`, `in`, `greater_than`, `less_than`
+  and `between`; presence filters and `contains` are unchanged. Before, `?filter[cf_age]=abc`
+  matched rows whose age is 0, `?filter[cf_price:greater_than]=zzz` and
+  `?filter[cf_due]=2024-13-45` failed inside PostgreSQL with a 500, and `?filter[cf_age]=`
+  matched age 0 on every driver.
+- Because the field's rules decide, a `select` filter with a key outside the options, a
+  `boolean` filter with a value such as `maybe` and a `number` filter with `1.5` now return
+  400 instead of an empty result or a silent cast.
+
 ## 0.5.0 - 2026-10-19
 
 ### Changed
