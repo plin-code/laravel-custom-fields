@@ -20,13 +20,14 @@ class DecimalType extends NumberType
 
     public function serialize(mixed $value, Model $field): mixed
     {
-        return $value === null ? null : (string) $value;
+        return $value === null ? null : ltrim((string) $value, '+');
     }
 
     /**
      * MySQL and PostgreSQL hand back the full scale of the decimal column while
      * SQLite returns what was written, so the fraction is trimmed and the same
-     * stored value reads the same on every driver.
+     * stored value reads the same on every driver. A legacy value stored in
+     * exponent form is returned as stored, since trimming it would change it.
      */
     public function deserialize(mixed $value, Model $field): mixed
     {
@@ -36,12 +37,16 @@ class DecimalType extends NumberType
 
         $value = (string) $value;
 
-        return str_contains($value, '.') ? rtrim(rtrim($value, '0'), '.') : $value;
+        if (! str_contains($value, '.') || str_contains(strtolower($value), 'e')) {
+            return $value;
+        }
+
+        return rtrim(rtrim($value, '0'), '.');
     }
 
     public function rules(Model $field): array
     {
-        return ['nullable', 'numeric'];
+        return ['nullable', 'numeric', 'decimal:0,6', 'between:-99999999999999.999999,99999999999999.999999'];
     }
 
     public function label(): string
