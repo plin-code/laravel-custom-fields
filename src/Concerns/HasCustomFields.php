@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use PlinCode\CustomFields\Exceptions\ModelNotPersistedException;
 use PlinCode\CustomFields\Exceptions\UnknownCustomFieldException;
 use PlinCode\CustomFields\Facades\CustomFields;
@@ -160,6 +161,10 @@ trait HasCustomFields
      * and what a request filter compares. A field stored as json is matched by
      * containment, because equality against a json array never holds.
      *
+     * A null value matches the hosts without a stored value for the field. An empty
+     * string is refused, because a write stores it as null and a comparison with it
+     * would be ambiguous.
+     *
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
@@ -167,6 +172,17 @@ trait HasCustomFields
     {
         $field = $this->customFieldDefinition($slug);
         $fieldKey = $field->getKey();
+
+        if ($value === '') {
+            throw new InvalidArgumentException("Custom field [{$slug}] cannot be compared with an empty string.");
+        }
+
+        if ($value === null) {
+            return $query->whereDoesntHave('customFieldValues', function (Builder $inner) use ($fieldKey): void {
+                $inner->where('custom_field_id', $fieldKey);
+            });
+        }
+
         $type = $field->fieldType();
         $column = $type->storageColumn();
         $json = $column === 'value_json';

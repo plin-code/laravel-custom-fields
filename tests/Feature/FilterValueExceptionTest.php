@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -53,4 +54,8 @@ it('answers a null element inside a list with a 400', function (): void {
     $this->getJson('/articles?filter[cf_age:in][]=1&filter[cf_age:in][]=')->assertStatus(400);
     $this->getJson('/articles?filter[cf_age:between][]=1&filter[cf_age:between][]=')->assertStatus(400);
     $this->getJson('/articles?filter[cf_age][]=1&filter[cf_age][]=2')->assertOk()->assertExactJson(['adult']);
+});
+
+it('is not reported by the exception handler', function (): void {
+    expect(app(ExceptionHandler::class)->shouldReport(InvalidFilterValueException::make('abc')))->toBeFalse();
 });

@@ -287,8 +287,8 @@ QueryBuilder::for(Patient::class)
    `in`, `contains_any`, `contains_all` take a comma separated list, `between` exactly two
    values, `greater_than` and `less_than` one value, `is_null` and `is_not_null` take `1` or
    `0`. Values for `equals`, `in`, `greater_than`, `less_than` and `between` are checked with the
-   type rules, and a malformed one, like an empty `contains` item, throws
-   `PlinCode\CustomFields\Exceptions\InvalidFilterValueException`, an HTTP 400 that extends
+   type rules. A failing value, or an empty `contains` item, throws
+   `PlinCode\CustomFields\Exceptions\InvalidFilterValueException` (HTTP 400, not reported), which extends
    Spatie's `InvalidFilterValue`. Presence filters, `contains_any` and `contains_all` are not
    validated. A `multiselect` has no bare equality filter, so
    `filter[cf_allergies]=latex` is rejected with Spatie's `InvalidFilterQuery`; send
@@ -299,7 +299,8 @@ QueryBuilder::for(Patient::class)
 
 Outside a request, use the scope: `Patient::whereCustomField('allergies', 'latex')` matches by
 JSON containment on a `multiselect` and by equality on the serialised value elsewhere. It does
-not validate, so skip it when the value is an empty string.
+not validate. A `null` value matches the hosts without a stored value, and an empty string
+throws `InvalidArgumentException`.
 
 ## Replace the package models
 

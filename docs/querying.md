@@ -31,9 +31,16 @@ and `'true'` or `1` become a boolean. On a `multiselect` the value is passed as 
 every record that holds it, and an array of keys matches the records that hold all of them.
 
 The scope does not validate the value. A date string that cannot be parsed throws Carbon's
-`InvalidFormatException`, and an empty string given for a `date` or a `datetime` is parsed
-as the current time, so skip the scope when there is nothing to compare. Anything richer
-than a single comparison belongs to the request filters below.
+`InvalidFormatException`. An empty string throws an `InvalidArgumentException`, because a
+write stores it as `null` and a comparison with it would be ambiguous. A `null` value means
+"no stored value" and matches the records that have no value for the field, on every type
+including `multiselect`:
+
+```php
+Patient::whereCustomField('risk-level', null)->get(); // no value stored for risk-level
+```
+
+Anything richer than a single comparison belongs to the request filters below.
 
 ## Filters and sorts for a request
 
@@ -157,7 +164,8 @@ filter value, is skipped.
 
 `InvalidFilterValueException` extends Spatie's `InvalidFilterValue`, so an existing
 `catch (InvalidFilterValue)` keeps working, and it implements Symfony's
-`HttpExceptionInterface` with status 400, like Spatie's `InvalidFilterQuery`. Laravel
+`HttpExceptionInterface` with status 400, like Spatie's `InvalidFilterQuery`. It is also
+marked `ShouldntReport`, so Laravel does not log it or send it to an error tracker. Laravel
 renders it as a 400 response out of the box, with no mapping in `bootstrap/app.php`.
 
 A date or datetime filter value goes through the same normalisation as a stored value, so

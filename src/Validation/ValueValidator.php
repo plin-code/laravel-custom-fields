@@ -34,7 +34,7 @@ class ValueValidator
     }
 
     /**
-     * @param  array<string, Model>|null  $definitions
+     * @param  array<string, Model>|null  $definitions  internal, passed by the caller that already loaded them
      * @return array<string, array<int, mixed>>
      */
     public function rules(Model|string $model, bool $complete = false, ?array $definitions = null): array
@@ -66,8 +66,8 @@ class ValueValidator
      * satisfy the required definitions the caller left out of the payload.
      *
      * @param  array<string, mixed>  $values
-     * @param  array<string, Model>|null  $definitions  definitions keyed by slug, already loaded by the caller
-     * @param  array<string, mixed>|null  $stored  current values keyed by slug, already loaded by the caller
+     * @param  array<string, Model>|null  $definitions  internal, definitions keyed by slug, already loaded by the caller
+     * @param  array<string, mixed>|null  $stored  internal, current values keyed by slug, already loaded by the caller
      */
     public function validate(Model $model, array $values, bool $complete = false, ?array $definitions = null, ?array $stored = null): void
     {

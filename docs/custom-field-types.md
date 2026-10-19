@@ -41,7 +41,12 @@ public function queryOperations(): array;
 
 ## Adding a type
 
-Extend one of the built in types when you only need to change part of that:
+Extend one of the built in types, such as `TextType`, rather than implementing `FieldType`
+directly. The interface may gain methods in 1.x, and the built in types will carry them, so
+a type that extends one keeps working across minor releases. Implement the interface from
+scratch only when no built in type fits the storage column you need.
+
+The example below extends `TextType` to change only part of it:
 
 ```php
 <?php

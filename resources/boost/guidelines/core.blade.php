@@ -79,6 +79,7 @@ $patient->clearCustomField('notes');
 
 `Patient::whereCustomField('risk-level', 'high')` serialises the value like a write would,
 except on a `multiselect`, where it uses JSON containment on the raw value. It does not validate.
+`null` matches the hosts without a stored value, and an empty string throws `InvalidArgumentException`.
 Request filters and sorts are built for `spatie/laravel-query-builder`, one per operation the
 field type declares. They read the definitions from the database, so call them while serving
 a request, never in a service provider.
