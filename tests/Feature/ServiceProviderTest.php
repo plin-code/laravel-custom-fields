@@ -79,10 +79,11 @@ it('publishes only the translations under the lang tag', function (): void {
         ->each->toEndWith('lang/vendor/laravel-custom-fields');
 });
 
-it('publishes both migrations under the migrations tag', function (): void {
+it('publishes the three migrations under the migrations tag', function (): void {
     expect(publishedPaths('laravel-custom-fields-migrations'))->toBe([
         'database/migrations/2026_01_01_000000_create_custom_fields_table.php',
         'database/migrations/2026_01_01_000001_create_custom_field_values_table.php',
+        'database/migrations/2026_01_01_000002_add_typed_indexes_to_custom_field_values_table.php',
     ]);
 });
 
@@ -92,6 +93,7 @@ it('publishes config, translations and migrations under the umbrella tag', funct
         'lang',
         'database/migrations/2026_01_01_000000_create_custom_fields_table.php',
         'database/migrations/2026_01_01_000001_create_custom_field_values_table.php',
+        'database/migrations/2026_01_01_000002_add_typed_indexes_to_custom_field_values_table.php',
     ]);
 });
 
@@ -101,6 +103,7 @@ it('ships the migrations under the name of the tables they create', function ():
     expect($files)->toBe([
         '2026_01_01_000000_create_custom_fields_table.php',
         '2026_01_01_000001_create_custom_field_values_table.php',
+        '2026_01_01_000002_add_typed_indexes_to_custom_field_values_table.php',
     ]);
 });
 

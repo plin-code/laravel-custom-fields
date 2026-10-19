@@ -96,33 +96,20 @@ fields run as a subquery on the field and the typed column, and no longer scan e
 of the field.
 
 An application that ran the migration before 0.7.0 does not get them, because a migration
-that already ran is not run again. Create a migration of your own with
-`php artisan make:migration add_typed_value_indexes` and paste this in. It reads the same
-table name the package reads, so it follows a changed `tables.values` configuration.
+that already ran is not run again. A third migration,
+`add_typed_indexes_to_custom_field_values_table`, adds them. Publish it and run it:
 
-```php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::table(config('laravel-custom-fields.tables.values'), function (Blueprint $table): void {
-            $table->index(['custom_field_id', 'value_integer'], 'cfv_field_integer_index');
-            $table->index(['custom_field_id', 'value_decimal'], 'cfv_field_decimal_index');
-            $table->index(['custom_field_id', 'value_date'], 'cfv_field_date_index');
-            $table->index(['custom_field_id', 'value_datetime'], 'cfv_field_datetime_index');
-        });
-    }
-};
+```bash
+php artisan vendor:publish --tag="laravel-custom-fields-migrations"
+php artisan migrate
 ```
 
-A new install needs nothing. If you already added an index on one of these columns
-yourself, drop it first or remove its line from the migration above.
+Publishing copies only the file your application does not have yet, so the two migrations
+you already published are left alone. The migration reads the values table name from the
+`tables.values` configuration and creates each index only when it is missing. An index you
+added by hand under the same name is skipped, and an index you added under a different name
+is left in place, so the column then carries both. A new install needs nothing, the first
+migration already creates all six indexes and the third one does nothing.
 
 ## Data notes
 

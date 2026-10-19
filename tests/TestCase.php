@@ -167,7 +167,9 @@ abstract class TestCase extends Orchestra
         }
 
         foreach (array_reverse($migrations) as $migration) {
-            $migration->down();
+            if (method_exists($migration, 'down')) {
+                $migration->down();
+            }
         }
 
         foreach ($migrations as $migration) {
