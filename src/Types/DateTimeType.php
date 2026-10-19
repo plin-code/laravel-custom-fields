@@ -25,7 +25,16 @@ class DateTimeType extends DateType
             return null;
         }
 
-        return Date::parse($value)->setTimezone(config('app.timezone'))->format($this->format());
+        return Date::parse($value, config('app.timezone'))->setTimezone(config('app.timezone'))->format($this->format());
+    }
+
+    public function deserialize(mixed $value, Model $field): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return Date::parse($value, config('app.timezone'))->setTimezone(config('app.timezone'))->format($this->format());
     }
 
     public function label(): string

@@ -283,7 +283,7 @@ The validation rules each type applies to a submitted value:
 | `email` | `nullable`, `email`, `max:255` |
 | `url` | `nullable`, `url`, `max:255` |
 | `number` | `nullable`, `integer` |
-| `decimal` | `nullable`, `numeric` |
+| `decimal` | `nullable`, `numeric`, `decimal:0,6`, `between:-99999999999999.999999,99999999999999.999999` |
 | `boolean` | `nullable`, `boolean` |
 | `date`, `datetime` | `nullable`, `date` |
 | `select` | `nullable`, `string`, and the value has to be an assignable option key |
