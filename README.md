@@ -181,8 +181,8 @@ SQLite, and on PHP 8.4 against MySQL 8.4 and PostgreSQL 17.
   `value_text` and `value_json` are not indexed.
 - Deleting a host model deletes its values, but a bulk delete through the query builder
   fires no model events and leaves them behind.
-- An invalid filter value throws Spatie's `InvalidFilterValue`, which is not an HTTP
-  exception and renders as a 500 until you map it to a 400.
+- An invalid filter value throws `PlinCode\CustomFields\Exceptions\InvalidFilterValueException`,
+  a Spatie `InvalidFilterValue` that Laravel renders as a 400 out of the box.
 - Stored values are not encrypted.
 - On SQLite a `decimal` has floating point affinity, so very long values lose precision.
 

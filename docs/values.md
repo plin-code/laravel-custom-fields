@@ -170,7 +170,7 @@ A value that passes is normalised before it is stored:
 | `InvalidArgumentException` | The `CustomFieldFilter` and `CustomFieldSorter` constructors | An operation outside the ten filter operations, an operation the type does not declare, or a sort on a type that does not declare `sort`. | 500 |
 | `InvalidArgumentException` | The service provider | `key_type` or `morph_key_type` is not `id`, `uuid` or `ulid`. | The application fails at boot |
 | `Illuminate\Database\UniqueConstraintViolationException` | `CustomField::create()`, `update()` | Two definitions of the same entity are given the same name, on create or by renaming one, or an explicit slug that is already taken. The uniqueness is enforced by the database. | 409 or 422, after you catch it |
-| `Spatie\QueryBuilder\Exceptions\InvalidFilterValue` | Request filters | A filter value fails the rules of the field type, a list holds an empty element, or the value has the wrong count for its operation. A filter with no value at all is ignored under Laravel's default middleware. | 400, once you map it, see [invalid filter values](querying.md#invalid-filter-values) |
+| `PlinCode\CustomFields\Exceptions\InvalidFilterValueException` | Request filters | A filter value fails the rules of the field type, a list holds an empty element, or the value has the wrong count for its operation. A filter with no value at all is ignored under Laravel's default middleware. | 400, see [invalid filter values](querying.md#invalid-filter-values) |
 
 `UnknownCustomFieldException` extends `InvalidArgumentException` and
 `ModelNotPersistedException` extends `RuntimeException`, so an existing catch on the parent
