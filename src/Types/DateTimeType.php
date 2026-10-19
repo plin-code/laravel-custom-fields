@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace PlinCode\CustomFields\Types;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Date;
+
 class DateTimeType extends DateType
 {
     public static function key(): string
@@ -16,6 +19,15 @@ class DateTimeType extends DateType
         return 'value_datetime';
     }
 
+    public function serialize(mixed $value, Model $field): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return Date::parse($value)->setTimezone(config('app.timezone'))->format($this->format());
+    }
+
     public function label(): string
     {
         return 'Date and time';
@@ -24,5 +36,10 @@ class DateTimeType extends DateType
     public function inputHint(): string
     {
         return 'datetime-local';
+    }
+
+    protected function format(): string
+    {
+        return 'Y-m-d H:i:s';
     }
 }
