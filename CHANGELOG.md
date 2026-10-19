@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.1 - 2026-10-19
+
+### Fixed
+
+- A `number` filter read the word `true` as `1` and `false` as `0`: the query builder turns
+  the two words into booleans before the filter runs, and Laravel's `integer` rule accepts a
+  boolean. `contains` searched for `1` on `true`. Both now throw
+  `InvalidFilterValueException`; only a field whose rules include `boolean` accepts the
+  words, so a `boolean` filter is unchanged. The 1.0.0 note saying `true` searches for `1`
+  described the old behaviour.
+- Two requests storing the first value of the same field on the same host at the same time
+  both tried to insert the row. The unique index stopped the second insert and the loser
+  threw `UniqueConstraintViolationException`. The insert now runs in a savepoint and, when
+  it loses, becomes an update of the row the other request stored, so the later write wins
+  exactly as when the requests arrive in sequence.
+
 ## 1.0.0 - 2026-10-19
 
 ### Added
