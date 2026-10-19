@@ -55,6 +55,7 @@ class CustomFieldsServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 '2026_01_01_000000_create_custom_fields_table',
                 '2026_01_01_000001_create_custom_field_values_table',
+                '2026_01_01_000002_add_typed_indexes_to_custom_field_values_table',
             ]);
     }
 

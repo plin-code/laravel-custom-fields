@@ -49,10 +49,13 @@ php artisan vendor:publish --tag="laravel-custom-fields-migrations"
 php artisan migrate
 ```
 
-Two migrations are published, `create_custom_fields_table` and
-`create_custom_field_values_table`. They are published one file at a time and receive a
-fresh timestamp, so they run after the migrations already in your application. Publish
-them after the tables of the models that will own custom fields exist.
+Three migrations are published, `create_custom_fields_table`,
+`create_custom_field_values_table` and `add_typed_indexes_to_custom_field_values_table`.
+The third one is for installs that ran the first two before 0.7.0 and does nothing on a
+fresh install, where the values table is created with every index. They are published one
+file at a time and receive a fresh timestamp, so they run after the migrations already in
+your application. Publish them after the tables of the models that will own custom fields
+exist.
 
 > [!IMPORTANT]
 > Set `key_type` and `morph_key_type` in the published configuration **before** you run
