@@ -160,8 +160,8 @@ the write path, because that array does not reject unknown slugs, inactive field
 option keys.
 
 `null` and an empty string delete the stored row. On a `multiselect` an empty array is a
-stored answer and keeps the row. A `date` reads back as `Y-m-d` and a `datetime` as
-`Y-m-d H:i:s` in the app timezone, whatever form of date the input took.
+stored answer and keeps the row. A `date` reads back as `Y-m-d` and is never shifted; a
+`datetime` reads back as `Y-m-d H:i:s` converted to the app timezone.
 
 ## Build a form
 
@@ -287,7 +287,10 @@ QueryBuilder::for(Patient::class)
    `in`, `contains_any`, `contains_all` take a comma separated list, `between` exactly two
    values, `greater_than` and `less_than` one value, `is_null` and `is_not_null` take `1` or
    `0`. Values for `equals`, `in`, `greater_than`, `less_than` and `between` are checked with the
-   type rules, and a malformed one is rejected. A `multiselect` has no bare equality filter, so
+   type rules, and a malformed one, like an empty `contains` item, throws
+   `PlinCode\CustomFields\Exceptions\InvalidFilterValueException`, an HTTP 400 that extends
+   Spatie's `InvalidFilterValue`. Presence filters, `contains_any` and `contains_all` are not
+   validated. A `multiselect` has no bare equality filter, so
    `filter[cf_allergies]=latex` is rejected with Spatie's `InvalidFilterQuery`; send
    `filter[cf_allergies:contains_any]=latex`.
    Records without a value sort last in both directions.
@@ -311,5 +314,6 @@ In application code resolve the classes with `CustomFields::fieldModel()` and
 Listen for `PlinCode\CustomFields\Events\CustomFieldCreated`, `CustomFieldUpdated`,
 `CustomFieldDeleted` (property `$field`) and `CustomFieldValueSaved`, `CustomFieldValueDeleted`
 (property `$value`). All of them are dispatched after the surrounding transaction commits.
-Deleting a host model deletes its values one by one, so `CustomFieldValueDeleted` fires per
-row. A bulk query builder delete fires nothing and leaves the rows.
+Deleting a host model deletes its values and fires `CustomFieldValueDeleted` per row. A soft
+deleted host keeps them until it is force deleted. A bulk query builder delete bypasses the
+hook and leaves the rows.
