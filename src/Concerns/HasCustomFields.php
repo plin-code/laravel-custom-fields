@@ -80,6 +80,7 @@ trait HasCustomFields
             throw ModelNotPersistedException::for(static::class);
         }
 
+        $values = array_map(static fn (mixed $value): mixed => $value === '' ? null : $value, $values);
         $definitions = $this->customFieldDefinitions(includeInactive: true);
         $rows = $this->customFieldRows($definitions);
         $stored = [];
