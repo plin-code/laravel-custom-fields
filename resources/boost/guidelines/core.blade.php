@@ -58,7 +58,7 @@ option with `is_active => false`, never remove one (it throws).
 <code-snippet name="Values on a persisted model" lang="php">
 $patient->setCustomFields(['risk-level' => 'high', 'notes' => 'Follow up.']);
 $patient->setCustomFields($payload, complete: true);
-$patient->setCustomField('notes', null); // deletes the stored row
+$patient->setCustomField('notes', null); // null or '' deletes the stored row
 $patient->getCustomField('risk-level');   // 'high'
 $patient->getCustomFields();              // every active field, keyed by slug
 $patient->clearCustomField('notes');
@@ -77,7 +77,8 @@ $patient->clearCustomField('notes');
 
 ### Querying
 
-`Patient::whereCustomField('risk-level', 'high')` is an equality scope on the stored shape.
+`Patient::whereCustomField('risk-level', 'high')` serialises the value like a write would and
+matches it, using JSON containment on a `multiselect`. It does not validate.
 Request filters and sorts are built for `spatie/laravel-query-builder`, one per operation the
 field type declares. They read the definitions from the database, so call them while serving
 a request, never in a service provider.
@@ -97,6 +98,7 @@ QueryBuilder::for(Patient::class)
 
 Names are the prefix plus the slug, with `:operation` for anything but equality:
 `filter[cf_risk-level]=high`, `filter[cf_risk-level:in]=high,low`, `sort=-cf_risk-level`.
+A malformed filter value is rejected, not matched loosely.
 Build them with `CustomFields::filterName()` and `CustomFields::sortName()`.
 
 ### Configuration

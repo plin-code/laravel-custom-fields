@@ -66,8 +66,9 @@ public function boot(): void
 ```
 
 The signature is `registerEntity(string $model, string $key, ?string $label = null)`. The key
-is stored in `entity_type` and added to the morph map. Registering the same model twice is
-ignored, while reusing a key for another model throws `InvalidArgumentException`.
+is stored in `entity_type` and added to the morph map. Registering the same model under the
+same key again is a no op. A key taken by another model (in the registry or the morph map)
+or a second key for the same model throws `InvalidArgumentException`.
 `CustomFields::entities()` returns the registry and `CustomFields::entityKey($modelOrClass)`
 resolves a key, throwing `InvalidArgumentException` for an unregistered model.
 
@@ -77,7 +78,8 @@ resolves a key, throwing `InvalidArgumentException` for an unregistered model.
 ## Define fields of each type
 
 A definition has these columns: `entity_type`, `name` (trimmed and lowercased, unique per
-entity), `slug` (generated from the name, at most 100 characters, immutable), `type`,
+entity), `slug` (generated from the name, at most 100 characters, immutable; an explicit one
+must match `/^[a-z0-9][a-z0-9_-]{0,99}$/`), `type`,
 `options`, `is_required`, `is_active`, `sort_order`.
 
 | `type` | Storage column | Accepts | Query operations (`sort` means it can be sorted on) |
@@ -87,7 +89,7 @@ entity), `slug` (generated from the name, at most 100 characters, immutable), `t
 | `url` | `value_string` | URL up to 255 | same as `text` |
 | `textarea` | `value_text` | any string | `equals`, `contains`, `is_null`, `is_not_null` |
 | `number` | `value_integer` | integer | `equals`, `in`, `greater_than`, `less_than`, `between`, `is_null`, `is_not_null`, `sort` |
-| `decimal` | `value_decimal` | numeric, read back as a trimmed string | same as `number` |
+| `decimal` | `value_decimal` | numeric, at most six fraction digits, read back as a trimmed string | same as `number` |
 | `boolean` | `value_boolean` | boolean | `equals`, `is_null`, `is_not_null`, `sort` |
 | `date` | `value_date` | date | `equals`, `greater_than`, `less_than`, `between`, `is_null`, `is_not_null`, `sort` |
 | `datetime` | `value_datetime` | date | same as `date` |
@@ -112,7 +114,8 @@ CustomField::create(['entity_type' => $entity, 'name' => 'Allergies', 'type' => 
 
 Rules the definition observer enforces, each failing with `InvalidArgumentException`:
 
-- an empty name, an option without `key` or `label`, a duplicated option key;
+- an empty name, an invalid explicit slug, a `type` that is not registered, an option without
+  `key` or `label`, a duplicated option key;
 - changing `slug` or `entity_type` after creation;
 - changing `type` while values exist;
 - removing an option key, whether through `update()` or `$field->updateOptions($options)`.
@@ -156,8 +159,9 @@ own rule array use `CustomFields::validator()->rules(Patient::class, complete: t
 the write path, because that array does not reject unknown slugs, inactive fields or retired
 option keys.
 
-`null` deletes the stored row. On a `multiselect` an empty array is a stored answer and keeps
-the row. Write a `date` as `Y-m-d` and a `datetime` as `Y-m-d H:i:s`, they read back as written.
+`null` and an empty string delete the stored row. On a `multiselect` an empty array is a
+stored answer and keeps the row. A `date` reads back as `Y-m-d` and a `datetime` as
+`Y-m-d H:i:s` in the app timezone, whatever form of date the input took.
 
 ## Build a form
 
@@ -241,9 +245,9 @@ class CountryType extends TextType
 
 5. Register it in `boot()` next to the entities with `CustomFields::registerType(CountryType::class)`.
    A key registered twice throws `InvalidArgumentException`, so a built in key cannot be
-   replaced, choose a new one. Nothing checks `type` when a definition is created: a key that
-   is not registered throws `InvalidArgumentException` from `CustomFields::type()` at the first
-   read or write of that field.
+   replaced, choose a new one. Register a type before saving a definition that uses it: an
+   unregistered `type` throws `InvalidArgumentException` on create, and on update when it
+   changes.
 6. An operation outside the vocabulary is allowed, but `CustomFields::filtersFor()` skips it
    (`PlinCode\CustomFields\Query\CustomFieldFilter::supports()` returns `false`) and the
    `CustomFieldFilter` constructor refuses it. Serve it with your own
@@ -282,14 +286,17 @@ QueryBuilder::for(Patient::class)
    `filter[cf_slug:between]`, and sorts are `sort=cf_slug` and `sort=-cf_slug`. Values:
    `in`, `contains_any`, `contains_all` take a comma separated list, `between` exactly two
    values, `greater_than` and `less_than` one value, `is_null` and `is_not_null` take `1` or
-   `0`. A `multiselect` has no bare equality filter, so `filter[cf_allergies]=latex` is
-   rejected with Spatie's `InvalidFilterQuery`; send `filter[cf_allergies:contains_any]=latex`.
+   `0`. Values for `equals`, `in`, `greater_than`, `less_than` and `between` are checked with the
+   type rules, and a malformed one is rejected. A `multiselect` has no bare equality filter, so
+   `filter[cf_allergies]=latex` is rejected with Spatie's `InvalidFilterQuery`; send
+   `filter[cf_allergies:contains_any]=latex`.
    Records without a value sort last in both directions.
 5. Constants for the operation names live on `CustomFieldFilter` (`CustomFieldFilter::BETWEEN`,
    `CustomFieldFilter::CONTAINS_ANY`) and `PlinCode\CustomFields\Query\CustomFieldSorter::SORT`.
 
 Outside a request, use the scope: `Patient::whereCustomField('allergies', 'latex')` matches by
-JSON containment on a `multiselect` and by equality elsewhere.
+JSON containment on a `multiselect` and by equality on the serialised value elsewhere. It does
+not validate, so skip it when the value is an empty string.
 
 ## Replace the package models
 
@@ -304,3 +311,5 @@ In application code resolve the classes with `CustomFields::fieldModel()` and
 Listen for `PlinCode\CustomFields\Events\CustomFieldCreated`, `CustomFieldUpdated`,
 `CustomFieldDeleted` (property `$field`) and `CustomFieldValueSaved`, `CustomFieldValueDeleted`
 (property `$value`). All of them are dispatched after the surrounding transaction commits.
+Deleting a host model deletes its values one by one, so `CustomFieldValueDeleted` fires per
+row. A bulk query builder delete fires nothing and leaves the rows.
