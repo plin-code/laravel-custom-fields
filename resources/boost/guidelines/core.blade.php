@@ -77,8 +77,8 @@ $patient->clearCustomField('notes');
 
 ### Querying
 
-`Patient::whereCustomField('risk-level', 'high')` serialises the value like a write would and
-matches it, using JSON containment on a `multiselect`. It does not validate.
+`Patient::whereCustomField('risk-level', 'high')` serialises the value like a write would,
+except on a `multiselect`, where it uses JSON containment on the raw value. It does not validate.
 Request filters and sorts are built for `spatie/laravel-query-builder`, one per operation the
 field type declares. They read the definitions from the database, so call them while serving
 a request, never in a service provider.
@@ -98,8 +98,12 @@ QueryBuilder::for(Patient::class)
 
 Names are the prefix plus the slug, with `:operation` for anything but equality:
 `filter[cf_risk-level]=high`, `filter[cf_risk-level:in]=high,low`, `sort=-cf_risk-level`.
-A malformed filter value is rejected, not matched loosely.
 Build them with `CustomFields::filterName()` and `CustomFields::sortName()`.
+
+A malformed value on an equality, list, range or comparison filter, or an empty `contains`
+item, throws `PlinCode\CustomFields\Exceptions\InvalidFilterValueException`, an HTTP 400
+that extends Spatie's `InvalidFilterValue`. Presence filters and `contains_any`/`contains_all`
+are not validated.
 
 ### Configuration
 
