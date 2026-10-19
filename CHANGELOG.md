@@ -5,6 +5,69 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 - 2026-10-19
+
+### Added
+
+- `plin-code/laravel-sql-dialect` is required. The `contains` filter uses its `LikeOperator`
+  for the operator and the escaping on every driver.
+- Four composite indexes on the values table: `(custom_field_id, value_integer)`,
+  `(custom_field_id, value_decimal)`, `(custom_field_id, value_date)` and
+  `(custom_field_id, value_datetime)`, named `cfv_field_<type>_index`. The create migration
+  adds them on a fresh install. A third migration,
+  `add_typed_indexes_to_custom_field_values_table`, adds them to an existing install when
+  they are missing: publish the migrations again (only the new file is copied) and migrate.
+- `PlinCode\CustomFields\Exceptions\InvalidFilterValueException`. It extends Spatie's
+  `InvalidFilterValue`, implements Symfony's `HttpExceptionInterface` with status 400 and is
+  not reported, so a malformed filter value renders as a 400 with no app side mapping. An
+  existing `render()` mapping of `InvalidFilterValue` still matches and can be removed.
+
+### Changed
+
+- `contains` is case insensitive on PostgreSQL (`ILIKE`). On MySQL and MariaDB it follows the
+  collation, on SQLite it is case insensitive for ASCII letters only. The escape character
+  changed from `!` to a backslash; MySQL with `NO_BACKSLASH_ESCAPES` in `sql_mode` rejects the
+  escape clause.
+- `CustomField` and `CustomFieldValue` declare `$fillable` instead of `$guarded = []`. Any
+  key outside it, including `id`, `created_at`, `updated_at` and the extra columns of a
+  subclass, is discarded by `create()` and `fill()`, or throws when the app enables
+  `Model::preventSilentlyDiscardingAttributes()`. Apps that extend the models through the
+  `models` config and add columns must extend `$fillable` too.
+- `contains` refuses an empty item: `?filter[cf_notes:contains]=a,,b` throws instead of
+  matching every row with a value. A bare `contains=` is turned into `null` by Laravel's
+  default middleware and skipped. The query builder turns the string `false` into a boolean,
+  so `contains=false` is refused as well; `true` searches for `1`.
+- A `null` element inside an `equals`, `in` or `contains` list or a `between` bound, which
+  the default middleware produces from `?filter[cf_age][]=`, is refused like an empty string.
+  A bare `null` value is still skipped by the query builder.
+- `whereCustomField()` throws an `InvalidArgumentException` for an empty string, and treats
+  `null` as "no stored value" (`whereDoesntHave` on that field). Before, an empty string on a
+  date field was parsed as the current time and `null` always returned nothing.
+- The README leads with the problem and a quick start; the reference moved to `docs/`. The
+  Laravel Boost guideline and skill describe the current behaviour.
+
+### Fixed
+
+- A `select` option whose key is the string `0` was dropped from the validation rule, so the
+  value could not be written or filtered.
+
+### Corrections to earlier release notes
+
+- 0.3.0 and 0.6.0 said a malformed filter value returned a 400. It did not: the package threw
+  Spatie's `InvalidFilterValue`, which extends `Exception`, so without an app side mapping the
+  request ended as a 500. 1.0.0 makes the 400 true.
+- 0.6.0 said `?filter[cf_age]=` was refused. Under Laravel's default
+  `ConvertEmptyStringsToNull` middleware the value reaches the query builder as `null` and the
+  filter is skipped. Only an empty element inside a list or a `between` bound is refused.
+
+### Upgrading from 0.1.x or 0.2.x
+
+See `docs/upgrading.md`. In short: update the package, publish the migrations again and
+migrate (index creation blocks writes on the values table while it builds, so pick a quiet
+window on a large table), check mass assignment against `$fillable`, re-save non canonical
+date rows on SQLite, register custom types before saving definitions, check `registerEntity()`
+at boot, and clean up value rows orphaned by host deletes before 0.5.0.
+
 ## 0.6.0 - 2026-10-19
 
 ### Changed

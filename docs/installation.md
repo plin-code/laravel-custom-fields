@@ -51,7 +51,7 @@ php artisan migrate
 
 Three migrations are published, `create_custom_fields_table`,
 `create_custom_field_values_table` and `add_typed_indexes_to_custom_field_values_table`.
-The third one is for installs that ran the first two before 0.7.0 and does nothing on a
+The third one is for installs that ran the first two before 1.0.0 and does nothing on a
 fresh install, where the values table is created with every index. They are published one
 file at a time and receive a fresh timestamp, so they run after the migrations already in
 your application. Publish them after the tables of the models that will own custom fields
@@ -74,8 +74,8 @@ caught by the database.
 The values table carries a unique index on the field and the owner, and one composite
 index on the field together with each of `value_string`, `value_boolean`, `value_integer`,
 `value_decimal`, `value_date` and `value_datetime`. `value_text` and `value_json` are not
-indexed. An install that ran the migration before 0.7.0 has only the first two, see
-[upgrading](upgrading.md#typed-column-indexes-070).
+indexed. An install that ran the migration before 1.0.0 has only the first two, see
+[upgrading](upgrading.md#typed-column-indexes-100).
 
 ## Translations
 

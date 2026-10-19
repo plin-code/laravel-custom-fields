@@ -1,6 +1,6 @@
 # Upgrading
 
-This page is for an application on 0.1.x or 0.2.x moving to 0.6.0. Releases 0.3.0 to 0.6.0
+This page is for an application on 0.1.x or 0.2.x moving to 1.0.0. Releases 0.3.0 to 1.0.0
 changed no method signature, but they changed what several calls accept, store and throw.
 Read each section, then check the data notes at the end. The full history is in the
 [changelog](https://github.com/plin-code/laravel-custom-fields/blob/main/CHANGELOG.md).
@@ -92,7 +92,7 @@ A bare `contains=` is skipped under the default middleware, and an empty item in
 is refused. An existing mapping of Spatie's `InvalidFilterValue` to a 400 in your exception handler
 can be removed.
 
-## Typed column indexes (0.7.0)
+## Typed column indexes (1.0.0)
 
 The shipped migration now indexes `value_integer`, `value_decimal`, `value_date` and
 `value_datetime`, each together with `custom_field_id`, next to the existing indexes on
@@ -100,7 +100,7 @@ The shipped migration now indexes `value_integer`, `value_decimal`, `value_date`
 fields run as a subquery on the field and the typed column, and no longer scan every value
 of the field.
 
-An application that ran the migration before 0.7.0 does not get them, because a migration
+An application that ran the migration before 1.0.0 does not get them, because a migration
 that already ran is not run again. A third migration,
 `add_typed_indexes_to_custom_field_values_table`, adds them. Publish it and run it:
 

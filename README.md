@@ -167,7 +167,7 @@ SQLite, and on PHP 8.4 against MySQL 8.4 and PostgreSQL 17.
 - [Custom field types](https://github.com/plin-code/laravel-custom-fields/blob/main/docs/custom-field-types.md):
   the `FieldType` contract, events, and the Laravel Boost resources.
 - [Upgrading](https://github.com/plin-code/laravel-custom-fields/blob/main/docs/upgrading.md):
-  behaviour changes from 0.3.0 to 0.6.0 for an application on 0.1 or 0.2.
+  behaviour changes from 0.3.0 to 1.0.0 for an application on 0.1 or 0.2.
 
 ## Limits and security
 
