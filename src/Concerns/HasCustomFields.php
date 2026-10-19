@@ -7,6 +7,7 @@ namespace PlinCode\CustomFields\Concerns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Exceptions\ModelNotPersistedException;
@@ -201,23 +202,48 @@ trait HasCustomFields
         });
     }
 
+    /**
+     * The row is read before the transaction, so two requests storing the first
+     * value of a field at the same time both try to insert it. The unique index
+     * stops the second one, and its write becomes the update it would have been
+     * a moment later. The insert runs in a savepoint because PostgreSQL abandons
+     * the whole transaction after a failed statement.
+     */
     private function writeCustomField(CustomField $field, ?CustomFieldValue $row, mixed $value): void
     {
         /** @var class-string<CustomFieldValue> $valueModel */
         $valueModel = CustomFields::valueModel();
+        $fieldKey = $field->getKey();
         $row ??= $valueModel::query()->make([
-            'custom_field_id' => $field->getKey(),
+            'custom_field_id' => $fieldKey,
             'valuable_type' => $this->getMorphClass(),
             'valuable_id' => $this->getKey(),
         ]);
+        $this->fillCustomFieldRow($row, $field, $value);
+
+        if ($row->exists) {
+            $row->save();
+
+            return;
+        }
+
+        try {
+            $row->getConnection()->transaction(static fn (): bool => $row->save());
+        } catch (UniqueConstraintViolationException) {
+            $row = $this->customFieldValues()->where('custom_field_id', $fieldKey)->firstOrFail();
+            $this->fillCustomFieldRow($row, $field, $value);
+            $row->save();
+        }
+    }
+
+    private function fillCustomFieldRow(CustomFieldValue $row, CustomField $field, mixed $value): void
+    {
         $row->setRelation('customField', $field);
         $column = $field->fieldType()->storageColumn();
 
         foreach (self::STORAGE_COLUMNS as $storageColumn) {
             $row->setAttribute($storageColumn, $storageColumn === $column ? $field->fieldType()->serialize($value, $field) : null);
         }
-
-        $row->save();
     }
 
     /**
