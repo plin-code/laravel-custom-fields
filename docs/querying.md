@@ -106,7 +106,7 @@ listing `sort` in its `queryOperations()`.
 | --- | --- | --- |
 | `equals` | a single value, or a comma separated list | Exact match. A list behaves as an `in`. |
 | `in` | a comma separated list | The value is one of the given ones. |
-| `contains` | a value, or a comma separated list | A `LIKE %value%` match. Case handling follows the collation of your database. `%`, `_`, `!` and a backslash are matched literally. A list matches any of the values. |
+| `contains` | a value, or a comma separated list | A `LIKE %value%` match through `plin-code/laravel-sql-dialect`. It ignores letter case on PostgreSQL (`ILIKE`), follows the collation on MySQL and MariaDB, and ignores case for ASCII letters only on SQLite. `%`, `_` and a backslash in the term are matched literally. A list matches any of the values. |
 | `greater_than`, `less_than` | a single value | A strict comparison. A list is rejected. |
 | `between` | exactly two comma separated values | An inclusive range. Any other count is rejected. |
 | `is_null` | `1` to ask for absent, `0` to ask for present | A record with no value row and a record whose typed column is null both count as absent. |

@@ -146,10 +146,12 @@ and `contains` is a `LIKE %x%` that no index can serve.
 - `plin-code/laravel-eloquent-sorts`, which validates the sort direction through
   `Direction::normalise()` and gives you relation, relation count and enum sorts that
   compose with the custom field sorts.
+- `plin-code/laravel-sql-dialect`, which builds the `contains` match as `ILIKE` on
+  PostgreSQL and `LIKE` elsewhere, with the wildcards of the term escaped.
 - `spatie/laravel-package-tools`, which wires the config, the translations and the
   migrations.
 
-All three are installed with the package. CI runs the suite on PHP 8.4 and 8.5 against
+All four are installed with the package. CI runs the suite on PHP 8.4 and 8.5 against
 SQLite, and on PHP 8.4 against MySQL 8.4 and PostgreSQL 17.
 
 ## Documentation

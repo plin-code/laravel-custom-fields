@@ -7,12 +7,12 @@ namespace PlinCode\CustomFields\Query;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
 use PlinCode\CustomFields\Exceptions\InvalidFilterValueException;
 use PlinCode\CustomFields\Models\CustomField;
+use PlinCode\SqlDialect\LikeOperator;
 use Spatie\QueryBuilder\Filters\Filter;
 
 /**
@@ -44,15 +44,6 @@ class CustomFieldFilter implements Filter
     public const string CONTAINS_ANY = 'contains_any';
 
     public const string CONTAINS_ALL = 'contains_all';
-
-    /**
-     * Escape character for the contains operation.
-     *
-     * A backslash is not usable here because MySQL, PostgreSQL and SQLite disagree on
-     * how a backslash survives a string literal, so a neutral character is used and the
-     * escape clause is always written explicitly.
-     */
-    private const string LIKE_ESCAPE = '!';
 
     private readonly string $operation;
 
@@ -147,24 +138,18 @@ class CustomFieldFilter implements Filter
     }
 
     /**
-     * The escape character has no builder method, so the placeholder and the escape
-     * clause travel together as an expression and the pattern is bound right after the
-     * clause that uses it, which keeps the bindings in the order of the compiled SQL.
-     *
-     * Case sensitivity follows the collation of the database, so the same pattern can
-     * behave differently on MySQL and on PostgreSQL.
+     * The dialect package picks ILIKE on PostgreSQL, so the match is case insensitive
+     * there, and writes the escape clause each driver accepts.
      *
      * @param  Builder<Model>  $inner
      */
     private function applyContains(Builder $inner, string $column, mixed $value): void
     {
-        $pattern = new Expression("? escape '".self::LIKE_ESCAPE."'");
         $items = array_map($this->text(...), $this->many($value));
 
-        $inner->where(function (Builder $group) use ($column, $pattern, $items): void {
+        $inner->where(function (Builder $group) use ($column, $items): void {
             foreach ($items as $item) {
-                $group->orWhere($column, 'like', $pattern)
-                    ->addBinding('%'.$this->escapeLike($item).'%', 'where');
+                LikeOperator::applyContains($group, $column, $item, 'or');
             }
         });
     }
@@ -224,15 +209,6 @@ class CustomFieldFilter implements Filter
     private function flag(mixed $value): bool
     {
         return filter_var($this->many($value)[0] ?? null, FILTER_VALIDATE_BOOLEAN);
-    }
-
-    private function escapeLike(string $value): string
-    {
-        return str_replace(
-            [self::LIKE_ESCAPE, '%', '_'],
-            [self::LIKE_ESCAPE.self::LIKE_ESCAPE, self::LIKE_ESCAPE.'%', self::LIKE_ESCAPE.'_'],
-            $value,
-        );
     }
 
     /** @return array<int, mixed> */
