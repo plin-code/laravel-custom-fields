@@ -5,6 +5,27 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.5.0 - 2026-10-19
+
+### Changed
+
+- `registerEntity()` throws an `InvalidArgumentException` when the entity key is already
+  mapped to another class in `Relation::morphMap()`, and when the model is already registered
+  under a different key. Registering the same model with the same key is still a no-op.
+  Before, an alias owned by another model was overwritten silently, so every `morphTo` stored
+  with that alias resolved to the wrong model, and a second key for the same model was
+  ignored silently. The key becomes the model's `getMorphClass()` for every polymorphic
+  relation, not only for custom fields.
+
+### Fixed
+
+- Deleting a host model deletes its stored values. The rows are removed one by one through
+  Eloquent, so `CustomFieldValueDeleted` fires per row exactly as `clearCustomField()` does.
+  A soft deleting host keeps its rows until it is force deleted. Before, the rows survived
+  the delete because the polymorphic pair has no foreign key, and a reused id inherited
+  stale values. Bulk deletes through the query builder fire no model events and still leave
+  rows behind.
+
 ## 0.4.0 - 2026-10-19
 
 ### Fixed
