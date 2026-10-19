@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PlinCode\CustomFields\Query;
 
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Expression;
@@ -261,7 +262,15 @@ class CustomFieldFilter implements Filter
 
     private function cast(mixed $value): mixed
     {
-        return $value === null ? null : $this->fieldType()->serialize($value, $this->field);
+        if ($value === null) {
+            return null;
+        }
+
+        try {
+            return $this->fieldType()->serialize($value, $this->field);
+        } catch (InvalidFormatException) {
+            throw InvalidFilterValue::make($this->describe($value));
+        }
     }
 
     /**
