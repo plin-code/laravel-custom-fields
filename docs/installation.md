@@ -68,11 +68,11 @@ keep `id` for a default Laravel model, switch to `uuid` or `ulid` only when ever
 model uses that key type. There is no foreign key on `valuable_id`, so a mismatch is not
 caught by the database.
 
-The values table carries a unique index on the field and the owner, and two composite
-indexes, on `value_string` and on `value_boolean`. `value_integer`, `value_decimal`,
-`value_date` and `value_datetime` are not indexed. If you filter or sort on them at scale,
-add an index in a migration of your own, for example on `custom_field_id` and
-`value_date`.
+The values table carries a unique index on the field and the owner, and one composite
+index on the field together with each of `value_string`, `value_boolean`, `value_integer`,
+`value_decimal`, `value_date` and `value_datetime`. `value_text` and `value_json` are not
+indexed. An install that ran the migration before 0.7.0 has only the first two, see
+[upgrading](upgrading.md#typed-column-indexes-070).
 
 ## Translations
 

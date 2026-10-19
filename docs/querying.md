@@ -203,8 +203,8 @@ clinic name and then by date of birth, newest first.
 ## Cost and indexes
 
 Every value filter is a `whereHas` subquery on the values table, and every sort adds two
-correlated subqueries. The values table is indexed on the field together with
-`value_string`, and together with `value_boolean`, which covers text, select and boolean
-fields. `value_integer`, `value_decimal`, `value_date` and `value_datetime` have no index
-in the shipped migration, so add one if you filter or sort on them at scale. `contains` is
+correlated subqueries. The values table is indexed on the field together with each of
+`value_string`, `value_boolean`, `value_integer`, `value_decimal`, `value_date` and
+`value_datetime`, so text, select, boolean, number, decimal, date and datetime fields are
+all served. `value_text` and `value_json` are not indexed. `contains` is
 a `LIKE` with a leading wildcard, which no ordinary index can serve, whatever the column.

@@ -174,9 +174,11 @@ SQLite, and on PHP 8.4 against MySQL 8.4 and PostgreSQL 17.
 - Authorization is your job. Nothing checks who may define, read or write a field.
 - `registerEntity()` adds the key to `Relation::morphMap()`, so it becomes the model's
   `getMorphClass()` for every polymorphic relation, not only for custom fields.
-- The shipped migration indexes `value_string` and `value_boolean` only. Add an index on
-  `value_integer`, `value_decimal`, `value_date` or `value_datetime` if you filter or sort
-  on them at scale.
+- The shipped migration indexes `value_string`, `value_boolean`, `value_integer`,
+  `value_decimal`, `value_date` and `value_datetime`, each together with the field. An
+  install that ran an earlier migration adds the four newer ones, see
+  [upgrading](https://github.com/plin-code/laravel-custom-fields/blob/main/docs/upgrading.md).
+  `value_text` and `value_json` are not indexed.
 - Deleting a host model deletes its values, but a bulk delete through the query builder
   fires no model events and leaves them behind.
 - An invalid filter value throws Spatie's `InvalidFilterValue`, which is not an HTTP
