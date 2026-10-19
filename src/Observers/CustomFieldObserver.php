@@ -19,8 +19,16 @@ class CustomFieldObserver
             throw new InvalidArgumentException('A custom field name cannot be empty.');
         }
 
+        $slug = (string) $field->getAttribute('slug');
+
+        if ($slug !== '' && preg_match('/^[a-z0-9][a-z0-9_-]{0,99}$/', $slug) !== 1) {
+            throw new InvalidArgumentException("Custom field slug [{$slug}] may only contain lowercase letters, digits, dashes and underscores.");
+        }
+
+        CustomFields::type((string) $field->getAttribute('type'));
+
         $field->setAttribute('name', $name);
-        $field->setAttribute('slug', $field->getAttribute('slug') ?: $this->slug($name, (string) $field->getAttribute('entity_type')));
+        $field->setAttribute('slug', $slug ?: $this->slug($name, (string) $field->getAttribute('entity_type')));
         $this->validateOptions($field);
     }
 
@@ -34,6 +42,10 @@ class CustomFieldObserver
 
         if ($field->isDirty('type') && $valueModel::query()->where('custom_field_id', $field->getKey())->exists()) {
             throw new InvalidArgumentException('A custom field type cannot change while values exist.');
+        }
+
+        if ($field->isDirty('type')) {
+            CustomFields::type((string) $field->getAttribute('type'));
         }
 
         $name = trim(mb_strtolower((string) $field->getAttribute('name')));
