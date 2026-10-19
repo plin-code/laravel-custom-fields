@@ -87,6 +87,43 @@ instead of returning an empty result or a silently cast one.
 `InvalidFilterValue` is not an HTTP exception, so it renders as a 500 unless you map it to
 a 400, see [invalid filter values](querying.md#invalid-filter-values).
 
+## Typed column indexes (0.7.0)
+
+The shipped migration now indexes `value_integer`, `value_decimal`, `value_date` and
+`value_datetime`, each together with `custom_field_id`, next to the existing indexes on
+`value_string` and `value_boolean`. Filters and sorts on number, decimal, date and datetime
+fields run as a subquery on the field and the typed column, and no longer scan every value
+of the field.
+
+An application that ran the migration before 0.7.0 does not get them, because a migration
+that already ran is not run again. Create a migration of your own with
+`php artisan make:migration add_typed_value_indexes` and paste this in. It reads the same
+table name the package reads, so it follows a changed `tables.values` configuration.
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table(config('laravel-custom-fields.tables.values'), function (Blueprint $table): void {
+            $table->index(['custom_field_id', 'value_integer'], 'cfv_field_integer_index');
+            $table->index(['custom_field_id', 'value_decimal'], 'cfv_field_decimal_index');
+            $table->index(['custom_field_id', 'value_date'], 'cfv_field_date_index');
+            $table->index(['custom_field_id', 'value_datetime'], 'cfv_field_datetime_index');
+        });
+    }
+};
+```
+
+A new install needs nothing. If you already added an index on one of these columns
+yourself, drop it first or remove its line from the migration above.
+
 ## Data notes
 
 - Rows written before 0.3.0 on MySQL and PostgreSQL were already stored canonically and are

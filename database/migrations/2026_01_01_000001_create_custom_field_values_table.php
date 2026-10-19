@@ -45,6 +45,10 @@ return new class extends Migration
             $table->unique(['custom_field_id', 'valuable_type', 'valuable_id'], 'cfv_field_valuable_unique');
             $table->index(['custom_field_id', 'value_string'], 'cfv_field_string_index');
             $table->index(['custom_field_id', 'value_boolean'], 'cfv_field_boolean_index');
+            $table->index(['custom_field_id', 'value_integer'], 'cfv_field_integer_index');
+            $table->index(['custom_field_id', 'value_decimal'], 'cfv_field_decimal_index');
+            $table->index(['custom_field_id', 'value_date'], 'cfv_field_date_index');
+            $table->index(['custom_field_id', 'value_datetime'], 'cfv_field_datetime_index');
         });
     }
 
