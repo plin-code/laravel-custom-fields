@@ -43,6 +43,27 @@ it('rejects a non numeric value on a number filter', function (): void {
         ->and(filterTitles('/?filter[cf_age]=30'))->toBe(['adult']);
 });
 
+it('refuses the word true on a number filter instead of reading it as one', function (): void {
+    filterField(['name' => 'Age', 'type' => 'number']);
+    filterArticle('one', ['age' => 1]);
+    filterArticle('zero', ['age' => 0]);
+
+    expect(fn (): array => filterTitles('/?filter[cf_age]=true'))->toThrow(InvalidFilterValue::class, 'true')
+        ->and(fn (): array => filterTitles('/?filter[cf_age]=false'))->toThrow(InvalidFilterValue::class, 'false')
+        ->and(fn (): array => filterTitles('/?filter[cf_age]=1,true'))->toThrow(InvalidFilterValue::class)
+        ->and(fn (): array => filterTitles('/?filter[cf_age:greater_than]=true'))->toThrow(InvalidFilterValue::class)
+        ->and(filterTitles('/?filter[cf_age]=1'))->toBe(['one']);
+});
+
+it('refuses the word true on a contains filter instead of searching for one', function (): void {
+    filterField(['name' => 'Notes', 'type' => 'text']);
+    filterArticle('one', ['notes' => 'number 1']);
+
+    expect(fn (): array => filterTitles('/?filter[cf_notes:contains]=true'))->toThrow(InvalidFilterValue::class)
+        ->and(fn (): array => filterTitles('/?filter[cf_notes:contains]=false'))->toThrow(InvalidFilterValue::class)
+        ->and(filterTitles('/?filter[cf_notes:contains]=1'))->toBe(['one']);
+});
+
 it('rejects an impossible date on a date filter', function (): void {
     filterField(['name' => 'Due', 'type' => 'date']);
     filterArticle('a', ['due' => '2024-01-01']);

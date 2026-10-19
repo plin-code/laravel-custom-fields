@@ -32,7 +32,7 @@ it('rejects an empty value on a contains filter', function (): void {
         ->and(fn (): array => containsTitles('/?filter[cf_notes:contains]=a,,b'))->toThrow(InvalidFilterValue::class)
         ->and(fn (): array => containsTitles('/?filter[cf_notes:contains]=a,'))->toThrow(InvalidFilterValue::class)
         ->and(fn (): array => containsTitles('/?filter[cf_notes:contains]=false'))->toThrow(InvalidFilterValue::class)
-        ->and(containsTitles('/?filter[cf_notes:contains]=true'))->toBe([])
+        ->and(fn (): array => containsTitles('/?filter[cf_notes:contains]=true'))->toThrow(InvalidFilterValue::class)
         ->and(containsTitles('/?filter[cf_notes:contains]=a'))->toBe(['alpha'])
         ->and(containsTitles('/?filter[cf_notes:contains]=a,b'))->toBe(['alpha', 'beta']);
 });
