@@ -6,6 +6,7 @@ namespace PlinCode\CustomFields\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use PlinCode\CustomFields\Exceptions\ModelNotPersistedException;
 use PlinCode\CustomFields\Exceptions\UnknownCustomFieldException;
@@ -26,6 +27,25 @@ trait HasCustomFields
         'value_datetime',
         'value_json',
     ];
+
+    /**
+     * The value rows carry a polymorphic pair with no foreign key, so they
+     * would outlive their host. They go through Eloquent one by one, which
+     * dispatches CustomFieldValueDeleted for each, exactly like a clear does.
+     * A soft deleted host keeps them, because it can still be restored.
+     */
+    public static function bootHasCustomFields(): void
+    {
+        static::deleted(static function (self $model): void {
+            $softDeletes = in_array(SoftDeletes::class, class_uses_recursive($model), true);
+
+            if ($softDeletes && method_exists($model, 'isForceDeleting') && ! $model->isForceDeleting()) {
+                return;
+            }
+
+            $model->customFieldValues()->get()->each->delete();
+        });
+    }
 
     /** @return MorphMany<CustomFieldValue, $this> */
     public function customFieldValues(): MorphMany
