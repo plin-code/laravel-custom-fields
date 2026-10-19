@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Request;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Models\CustomField;
 use Spatie\QueryBuilder\Exceptions\InvalidFilterValue;
-use Spatie\QueryBuilder\QueryBuilder;
 use Workbench\App\Models\Article;
 
 beforeEach(function (): void {
@@ -15,17 +13,8 @@ beforeEach(function (): void {
     CustomField::create(['name' => 'When', 'entity_type' => 'article', 'type' => 'date']);
 });
 
-/** @return array<int, string> */
-function dateFilterTitles(string $url): array
-{
-    return QueryBuilder::for(Article::class, Request::create($url))
-        ->allowedFilters(...CustomFields::filtersFor(Article::class))
-        ->pluck('title')
-        ->all();
-}
-
 it('rejects a date filter value that cannot be parsed', function (string $url): void {
-    expect(fn (): array => dateFilterTitles($url))->toThrow(InvalidFilterValue::class);
+    expect(fn (): array => articleTitles($url))->toThrow(InvalidFilterValue::class);
 })->with([
     'text' => '/?filter[cf_when]=abc',
     'impossible date' => '/?filter[cf_when]=2024-13-45',
@@ -36,8 +25,8 @@ it('still filters on a valid date value', function (): void {
     Article::create(['title' => 'early'])->setCustomField('when', '2024-01-05');
     Article::create(['title' => 'target'])->setCustomField('when', '2024-01-15');
 
-    expect(dateFilterTitles('/?filter[cf_when]=2024-01-15'))->toBe(['target'])
-        ->and(dateFilterTitles('/?filter[cf_when:greater_than]=2024-01-10'))->toBe(['target']);
+    expect(articleTitles('/?filter[cf_when]=2024-01-15'))->toBe(['target'])
+        ->and(articleTitles('/?filter[cf_when:greater_than]=2024-01-10'))->toBe(['target']);
 });
 
 it('reads a legacy datetime stored with an offset in the app timezone', function (): void {

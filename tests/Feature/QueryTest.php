@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PlinCode\CustomFields\Facades\CustomFields;
-use PlinCode\CustomFields\Models\CustomField;
 use PlinCode\CustomFields\Models\CustomFieldValue;
 use PlinCode\CustomFields\Query\CustomFieldFilter;
 use PlinCode\CustomFields\Query\CustomFieldSorter;
@@ -20,22 +19,6 @@ use Workbench\App\Models\Author;
 beforeEach(function (): void {
     CustomFields::registerEntity(Article::class, 'article');
 });
-
-/** @param array<string, mixed> $attributes */
-function queryable(array $attributes): CustomField
-{
-    return CustomField::create($attributes + ['entity_type' => 'article', 'type' => 'text']);
-}
-
-/** @return array<int, string> */
-function titlesFor(string $url): array
-{
-    return QueryBuilder::for(Article::class, Request::create($url))
-        ->allowedFilters(...CustomFields::filtersFor(Article::class))
-        ->allowedSorts(...CustomFields::sortsFor(Article::class))
-        ->pluck('title')
-        ->all();
-}
 
 /** @return array<int, string> */
 function filterNames(): array
@@ -55,17 +38,8 @@ function sortNames(): array
     );
 }
 
-/** @param array<string, mixed> $values */
-function articleWith(string $title, array $values): Article
-{
-    $article = Article::create(['title' => $title]);
-    $article->setCustomFields($values);
-
-    return $article;
-}
-
 it('exposes one filter per declared operation of a field', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
 
     expect(filterNames())->toBe([
         'cf_rank',
@@ -79,7 +53,7 @@ it('exposes one filter per declared operation of a field', function (): void {
 });
 
 it('never exposes an equality filter on a multiselect', function (): void {
-    queryable(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
+    articleField(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
         ['key' => 'a', 'label' => 'A', 'is_active' => true],
         ['key' => 'b', 'label' => 'B', 'is_active' => true],
     ]]);
@@ -92,11 +66,11 @@ it('never exposes an equality filter on a multiselect', function (): void {
         'cf_tags:is_not_null',
     ])
         ->and(sortNames())->toBe([])
-        ->and(fn (): array => titlesFor('/?filter[cf_tags]=a'))->toThrow(InvalidFilterQuery::class);
+        ->and(fn (): array => articleTitles('/?filter[cf_tags]=a'))->toThrow(InvalidFilterQuery::class);
 });
 
 it('matches a multiselect on the keys it holds', function (): void {
-    queryable(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
+    articleField(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
         ['key' => 'a', 'label' => 'A', 'is_active' => true],
         ['key' => 'b', 'label' => 'B', 'is_active' => true],
     ]]);
@@ -104,18 +78,18 @@ it('matches a multiselect on the keys it holds', function (): void {
     articleWith('Two', ['tags' => ['a', 'b']]);
     articleWith('Three', ['tags' => []]);
 
-    expect(titlesFor('/?filter[cf_tags:contains_any]=a'))->toBe(['One', 'Two'])
-        ->and(titlesFor('/?filter[cf_tags:contains_any]=a,b'))->toBe(['One', 'Two'])
-        ->and(titlesFor('/?filter[cf_tags:contains_all]=a,b'))->toBe(['Two'])
-        ->and(titlesFor('/?filter[cf_tags:is_not_null]=1'))->toBe(['One', 'Two', 'Three'])
-        ->and(titlesFor('/?filter[cf_tags:is_null]=1'))->toBe([]);
+    expect(articleTitles('/?filter[cf_tags:contains_any]=a'))->toBe(['One', 'Two'])
+        ->and(articleTitles('/?filter[cf_tags:contains_any]=a,b'))->toBe(['One', 'Two'])
+        ->and(articleTitles('/?filter[cf_tags:contains_all]=a,b'))->toBe(['Two'])
+        ->and(articleTitles('/?filter[cf_tags:is_not_null]=1'))->toBe(['One', 'Two', 'Three'])
+        ->and(articleTitles('/?filter[cf_tags:is_null]=1'))->toBe([]);
 });
 
 it('refuses an operation the field type does not declare', function (): void {
-    $tags = queryable(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
+    $tags = articleField(['name' => 'Tags', 'type' => 'multiselect', 'options' => [
         ['key' => 'a', 'label' => 'A', 'is_active' => true],
     ]]);
-    $notes = queryable(['name' => 'Notes', 'type' => 'textarea']);
+    $notes = articleField(['name' => 'Notes', 'type' => 'textarea']);
 
     expect(fn (): CustomFieldFilter => new CustomFieldFilter($tags, CustomFieldFilter::EQUALS))
         ->toThrow(InvalidArgumentException::class, 'Custom field [tags] does not declare the query operation [equals].')
@@ -126,7 +100,7 @@ it('refuses an operation the field type does not declare', function (): void {
 });
 
 it('refuses an operation the filter cannot serve', function (): void {
-    $rank = queryable(['name' => 'Rank', 'type' => 'number']);
+    $rank = articleField(['name' => 'Rank', 'type' => 'number']);
 
     expect(fn (): CustomFieldFilter => new CustomFieldFilter($rank, 'regex'))
         ->toThrow(InvalidArgumentException::class, 'Custom field query operation [regex] is not supported.')
@@ -136,50 +110,50 @@ it('refuses an operation the filter cannot serve', function (): void {
 });
 
 it('compares and ranges a number field', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     articleWith('a', ['rank' => 1]);
     articleWith('b', ['rank' => 5]);
     articleWith('c', ['rank' => 9]);
 
-    expect(titlesFor('/?filter[cf_rank]=5'))->toBe(['b'])
-        ->and(titlesFor('/?filter[cf_rank:in]=1,9'))->toBe(['a', 'c'])
-        ->and(titlesFor('/?filter[cf_rank:greater_than]=4'))->toBe(['b', 'c'])
-        ->and(titlesFor('/?filter[cf_rank:less_than]=5'))->toBe(['a'])
-        ->and(titlesFor('/?filter[cf_rank:between]=2,9'))->toBe(['b', 'c']);
+    expect(articleTitles('/?filter[cf_rank]=5'))->toBe(['b'])
+        ->and(articleTitles('/?filter[cf_rank:in]=1,9'))->toBe(['a', 'c'])
+        ->and(articleTitles('/?filter[cf_rank:greater_than]=4'))->toBe(['b', 'c'])
+        ->and(articleTitles('/?filter[cf_rank:less_than]=5'))->toBe(['a'])
+        ->and(articleTitles('/?filter[cf_rank:between]=2,9'))->toBe(['b', 'c']);
 });
 
 it('compares and ranges a date field', function (): void {
-    queryable(['name' => 'Due', 'type' => 'date']);
+    articleField(['name' => 'Due', 'type' => 'date']);
     articleWith('a', ['due' => '2024-01-01']);
     articleWith('b', ['due' => '2024-06-01']);
     articleWith('c', ['due' => '2024-12-01']);
 
-    expect(titlesFor('/?filter[cf_due]=2024-06-01'))->toBe(['b'])
-        ->and(titlesFor('/?filter[cf_due:greater_than]=2024-05-01'))->toBe(['b', 'c'])
-        ->and(titlesFor('/?filter[cf_due:less_than]=2024-05-01'))->toBe(['a'])
-        ->and(titlesFor('/?filter[cf_due:between]=2024-04-01,2024-12-01'))->toBe(['b', 'c']);
+    expect(articleTitles('/?filter[cf_due]=2024-06-01'))->toBe(['b'])
+        ->and(articleTitles('/?filter[cf_due:greater_than]=2024-05-01'))->toBe(['b', 'c'])
+        ->and(articleTitles('/?filter[cf_due:less_than]=2024-05-01'))->toBe(['a'])
+        ->and(articleTitles('/?filter[cf_due:between]=2024-04-01,2024-12-01'))->toBe(['b', 'c']);
 });
 
 it('rejects a range that does not carry two bounds', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
 
-    expect(fn (): array => titlesFor('/?filter[cf_rank:between]=2'))->toThrow(InvalidFilterValue::class)
-        ->and(fn (): array => titlesFor('/?filter[cf_rank:greater_than]=2,3'))->toThrow(InvalidFilterValue::class);
+    expect(fn (): array => articleTitles('/?filter[cf_rank:between]=2'))->toThrow(InvalidFilterValue::class)
+        ->and(fn (): array => articleTitles('/?filter[cf_rank:greater_than]=2,3'))->toThrow(InvalidFilterValue::class);
 });
 
 it('reads a boolean filter written as text', function (): void {
-    queryable(['name' => 'Flag', 'type' => 'boolean']);
+    articleField(['name' => 'Flag', 'type' => 'boolean']);
     articleWith('on', ['flag' => true]);
     articleWith('off', ['flag' => false]);
 
-    expect(titlesFor('/?filter[cf_flag]=true'))->toBe(['on'])
-        ->and(titlesFor('/?filter[cf_flag]=1'))->toBe(['on'])
-        ->and(titlesFor('/?filter[cf_flag]=false'))->toBe(['off'])
-        ->and(titlesFor('/?filter[cf_flag]=0'))->toBe(['off']);
+    expect(articleTitles('/?filter[cf_flag]=true'))->toBe(['on'])
+        ->and(articleTitles('/?filter[cf_flag]=1'))->toBe(['on'])
+        ->and(articleTitles('/?filter[cf_flag]=false'))->toBe(['off'])
+        ->and(articleTitles('/?filter[cf_flag]=0'))->toBe(['off']);
 });
 
 it('treats a missing row and a null column alike for presence', function (): void {
-    $rank = queryable(['name' => 'Rank', 'type' => 'number']);
+    $rank = articleField(['name' => 'Rank', 'type' => 'number']);
     articleWith('answered', ['rank' => 1]);
     $blank = Article::create(['title' => 'blank']);
     Article::create(['title' => 'missing']);
@@ -190,48 +164,48 @@ it('treats a missing row and a null column alike for presence', function (): voi
         'valuable_id' => $blank->getKey(),
     ]);
 
-    expect(titlesFor('/?filter[cf_rank:is_null]=1'))->toBe(['blank', 'missing'])
-        ->and(titlesFor('/?filter[cf_rank:is_not_null]=1'))->toBe(['answered'])
-        ->and(titlesFor('/?filter[cf_rank:is_null]=0'))->toBe(['answered']);
+    expect(articleTitles('/?filter[cf_rank:is_null]=1'))->toBe(['blank', 'missing'])
+        ->and(articleTitles('/?filter[cf_rank:is_not_null]=1'))->toBe(['answered'])
+        ->and(articleTitles('/?filter[cf_rank:is_null]=0'))->toBe(['answered']);
 });
 
 it('matches a literal wildcard through the contains operation', function (): void {
-    queryable(['name' => 'Notes', 'type' => 'text']);
+    articleField(['name' => 'Notes', 'type' => 'text']);
     articleWith('percent', ['notes' => '50% off']);
     articleWith('underscore', ['notes' => 'off_x']);
     articleWith('plain', ['notes' => 'offax']);
     articleWith('backslash', ['notes' => 'back\\slash']);
     articleWith('bang', ['notes' => 'bang!']);
 
-    expect(titlesFor('/?filter[cf_notes:contains]=50%'))->toBe(['percent'])
-        ->and(titlesFor('/?filter[cf_notes:contains]=off_x'))->toBe(['underscore'])
-        ->and(titlesFor('/?filter[cf_notes:contains]=%%'))->toBe([])
-        ->and(titlesFor('/?filter[cf_notes:contains]='.urlencode('back\\slash')))->toBe(['backslash'])
-        ->and(titlesFor('/?filter[cf_notes:contains]='.urlencode('bang!')))->toBe(['bang']);
+    expect(articleTitles('/?filter[cf_notes:contains]=50%'))->toBe(['percent'])
+        ->and(articleTitles('/?filter[cf_notes:contains]=off_x'))->toBe(['underscore'])
+        ->and(articleTitles('/?filter[cf_notes:contains]=%%'))->toBe([])
+        ->and(articleTitles('/?filter[cf_notes:contains]='.urlencode('back\\slash')))->toBe(['backslash'])
+        ->and(articleTitles('/?filter[cf_notes:contains]='.urlencode('bang!')))->toBe(['bang']);
 });
 
 it('groups the values of a contains filter as an or', function (): void {
-    queryable(['name' => 'Notes', 'type' => 'text']);
+    articleField(['name' => 'Notes', 'type' => 'text']);
     articleWith('first', ['notes' => 'alpha one']);
     articleWith('second', ['notes' => 'beta two']);
     articleWith('third', ['notes' => 'gamma three']);
 
-    expect(titlesFor('/?filter[cf_notes:contains]=alpha,beta'))->toBe(['first', 'second']);
+    expect(articleTitles('/?filter[cf_notes:contains]=alpha,beta'))->toBe(['first', 'second']);
 });
 
 it('places the hosts without a value last in both directions', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     articleWith('a', ['rank' => 3]);
     articleWith('b', ['rank' => 1]);
     articleWith('c', ['rank' => 2]);
     Article::create(['title' => 'none']);
 
-    expect(titlesFor('/?sort=cf_rank'))->toBe(['b', 'c', 'a', 'none'])
-        ->and(titlesFor('/?sort=-cf_rank'))->toBe(['a', 'c', 'b', 'none']);
+    expect(articleTitles('/?sort=cf_rank'))->toBe(['b', 'c', 'a', 'none'])
+        ->and(articleTitles('/?sort=-cf_rank'))->toBe(['a', 'c', 'b', 'none']);
 });
 
 it('leaves the select, the grouping and the order of the caller alone', function (): void {
-    $rank = queryable(['name' => 'Rank', 'type' => 'number']);
+    $rank = articleField(['name' => 'Rank', 'type' => 'number']);
     articleWith('a', ['rank' => 3]);
     articleWith('b', ['rank' => 1]);
     Article::create(['title' => 'none']);
@@ -249,7 +223,7 @@ it('leaves the select, the grouping and the order of the caller alone', function
 });
 
 it('composes a custom field sort with a sorter of the sibling package', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
     $zoe = Author::create(['name' => 'zoe']);
     $ada = Author::create(['name' => 'ada']);
     Article::create(['title' => 'one', 'author_id' => $zoe->id])->setCustomField('rank', 1);
@@ -269,7 +243,7 @@ it('composes a custom field sort with a sorter of the sibling package', function
 
 it('follows the configured key prefix', function (): void {
     config()->set('laravel-custom-fields.key_prefix', 'x-');
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
 
     expect(CustomFields::keyPrefix())->toBe('x-')
         ->and(CustomFields::filterName('rank'))->toBe('x-rank')
@@ -280,7 +254,7 @@ it('follows the configured key prefix', function (): void {
 });
 
 it('reads the definitions once when filters and sorts are asked together', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number']);
+    articleField(['name' => 'Rank', 'type' => 'number']);
 
     DB::enableQueryLog();
     $options = CustomFields::queryOptionsFor(Article::class);
@@ -298,7 +272,7 @@ it('reads the definitions once when filters and sorts are asked together', funct
 });
 
 it('offers neither a filter nor a sort for a deactivated field', function (): void {
-    queryable(['name' => 'Rank', 'type' => 'number', 'is_active' => false]);
+    articleField(['name' => 'Rank', 'type' => 'number', 'is_active' => false]);
 
     expect(filterNames())->toBe([])
         ->and(sortNames())->toBe([]);
