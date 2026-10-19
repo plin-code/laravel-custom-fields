@@ -134,9 +134,9 @@ Spatie reads the value before the package sees it, and two of its rules matter:
   work, and it also means a literal comma cannot be searched for: `filter[cf_notes]=a,b`
   looks for `a` or `b`, never for `a,b`.
 - The strings `true` and `false` become booleans. A `boolean` field is served well by
-  this, but a text field cannot be compared with the word `true` or `false`: equality
-  refuses the boolean as an invalid value, and `contains` searches for `1` for `true` and
-  refuses `false` as an empty value.
+  this, but no other field can be compared with the word `true` or `false`: equality,
+  the comparisons and `contains` refuse the boolean as an invalid value, so a `number`
+  filter never reads `true` as `1`.
 
 ## Invalid filter values
 

@@ -242,6 +242,11 @@ class CustomFieldFilter implements Filter
         return $this->castMany($values);
     }
 
+    /**
+     * Spatie turns the words true and false into booleans before the filter runs. Only a
+     * type whose rules accept a boolean can compare one, so the word is refused anywhere
+     * else, where the integer rule would otherwise read true as 1.
+     */
     private function cast(mixed $value): mixed
     {
         if ($value === null) {
@@ -250,7 +255,13 @@ class CustomFieldFilter implements Filter
 
         $this->requireValue($value);
 
-        $validator = Validator::make(['value' => $value], ['value' => $this->fieldType()->rules($this->field)]);
+        $rules = $this->fieldType()->rules($this->field);
+
+        if (is_bool($value) && ! in_array('boolean', $rules, true)) {
+            throw InvalidFilterValueException::make($this->describe($value));
+        }
+
+        $validator = Validator::make(['value' => $value], ['value' => $rules]);
 
         if ($validator->fails()) {
             throw InvalidFilterValueException::make($this->describe($value));
@@ -280,7 +291,7 @@ class CustomFieldFilter implements Filter
 
     private function text(mixed $value): string
     {
-        if (! is_scalar($value)) {
+        if (! is_scalar($value) || is_bool($value)) {
             throw InvalidFilterValueException::make($this->describe($value));
         }
 
@@ -306,6 +317,10 @@ class CustomFieldFilter implements Filter
     {
         if (is_array($value)) {
             return implode(',', array_map($this->describe(...), $value));
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
         }
 
         return is_scalar($value) ? (string) $value : get_debug_type($value);
