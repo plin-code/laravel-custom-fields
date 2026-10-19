@@ -169,8 +169,9 @@ SQLite, and on PHP 8.4 against MySQL 8.4 and PostgreSQL 17.
 
 ## Limits and security
 
-- `CustomField` and `CustomFieldValue` use `$guarded = []`. Never pass request input to
-  `CustomField::create()` without validating it first.
+- `CustomField` and `CustomFieldValue` declare `$fillable`, so an unknown key in `create()` is
+  discarded (or throws with `Model::preventSilentlyDiscardingAttributes()`). Validating the
+  values and authorizing the request still belong to your application.
 - Authorization is your job. Nothing checks who may define, read or write a field.
 - `registerEntity()` adds the key to `Relation::morphMap()`, so it becomes the model's
   `getMorphClass()` for every polymorphic relation, not only for custom fields.

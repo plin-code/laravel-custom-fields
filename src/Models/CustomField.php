@@ -25,7 +25,16 @@ class CustomField extends Model
         'deleted' => CustomFieldDeleted::class,
     ];
 
-    protected $guarded = [];
+    protected $fillable = [
+        'entity_type',
+        'name',
+        'slug',
+        'type',
+        'options',
+        'is_required',
+        'is_active',
+        'sort_order',
+    ];
 
     /** @return Factory<self> */
     protected static function newFactory(): Factory

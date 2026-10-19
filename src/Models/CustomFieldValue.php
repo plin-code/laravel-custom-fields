@@ -21,7 +21,19 @@ class CustomFieldValue extends Model
         'deleted' => CustomFieldValueDeleted::class,
     ];
 
-    protected $guarded = [];
+    protected $fillable = [
+        'custom_field_id',
+        'valuable_type',
+        'valuable_id',
+        'value_string',
+        'value_text',
+        'value_integer',
+        'value_decimal',
+        'value_boolean',
+        'value_date',
+        'value_datetime',
+        'value_json',
+    ];
 
     /** @return Factory<self> */
     protected static function newFactory(): Factory

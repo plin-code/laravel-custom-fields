@@ -81,8 +81,9 @@ Nothing checks `entity_type` against the registry, so resolve it with `entityKey
 than typing the string. A typo creates a definition that every read, write, filter and sort
 ignores, with no error anywhere.
 
-`CustomField` uses `$guarded = []`. Build the attributes yourself, or validate the request
-before you hand it to `create()`.
+`CustomField` declares `$fillable`, so an unknown key in `create()` is discarded (or throws
+with `Model::preventSilentlyDiscardingAttributes()`). Validating the values and authorizing
+the request still belong to your application.
 
 ```php
 use App\Models\Patient;
