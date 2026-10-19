@@ -60,8 +60,8 @@ return [
      | The prefix applied to the generated spatie/laravel-query-builder filter
      | and sort names.
      |
-     | With the default prefix a field with the slug "release_date" is exposed as
-     | filter[cf_release_date] and sort=cf_release_date. Change it to avoid a
+     | With the default prefix a field with the slug "release-date" is exposed as
+     | filter[cf_release-date] and sort=cf_release-date. Change it to avoid a
      | clash with the native columns you already expose.
      */
     'key_prefix' => 'cf_',
