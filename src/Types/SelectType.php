@@ -58,9 +58,12 @@ class SelectType implements FieldType
     /** @return array<int, string> */
     private function optionKeys(Model $field): array
     {
-        return array_values(array_filter(array_map(
-            static fn (mixed $option): ?string => is_array($option) && isset($option['key']) ? (string) $option['key'] : null,
-            $field->getAttribute('options') ?? [],
-        )));
+        return array_values(array_filter(
+            array_map(
+                static fn (mixed $option): ?string => is_array($option) && isset($option['key']) ? (string) $option['key'] : null,
+                $field->getAttribute('options') ?? [],
+            ),
+            static fn (?string $key): bool => $key !== null,
+        ));
     }
 }
