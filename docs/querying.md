@@ -128,8 +128,8 @@ Spatie reads the value before the package sees it, and two of its rules matter:
   looks for `a` or `b`, never for `a,b`.
 - The strings `true` and `false` become booleans. A `boolean` field is served well by
   this, but a text field cannot be compared with the word `true` or `false`: equality
-  refuses the boolean as an invalid value, and `contains` searches for `1` or an empty
-  string instead.
+  refuses the boolean as an invalid value, and `contains` searches for `1` for `true` and
+  refuses `false` as an empty value.
 
 ## Invalid filter values
 
@@ -140,8 +140,10 @@ or `less_than`, and a `between` with anything other than two values all throw
 `Spatie\QueryBuilder\Exceptions\InvalidFilterValue`. So `filter[cf_age]=abc` on a `number`,
 `filter[cf_date-of-birth]=2024-13-45`, `filter[cf_risk-level]=closed` on a `select` without
 that key, `filter[cf_age]=1,,2` and `filter[cf_date-of-birth:between]=,2024-01-31` are all
-refused instead of matching the wrong rows. The presence filters, `contains`,
-`contains_any` and `contains_all` are not validated this way.
+refused instead of matching the wrong rows. An empty `contains` value, such as
+`filter[cf_notes:contains]=a,,b`, is refused the same way, because it would otherwise match
+every row that has a value. The presence filters, `contains_any` and `contains_all` are not
+validated this way.
 
 A filter sent with no value at all, such as `filter[cf_age]=`, is different. Laravel's
 `ConvertEmptyStringsToNull` middleware turns the empty query string value into `null`, and

@@ -159,11 +159,16 @@ class CustomFieldFilter implements Filter
     private function applyContains(Builder $inner, string $column, mixed $value): void
     {
         $pattern = new Expression("? escape '".self::LIKE_ESCAPE."'");
+        $items = array_map($this->text(...), $this->many($value));
 
-        $inner->where(function (Builder $group) use ($column, $pattern, $value): void {
-            foreach ($this->many($value) as $item) {
+        if (in_array('', $items, true)) {
+            throw InvalidFilterValue::make($this->describe($value));
+        }
+
+        $inner->where(function (Builder $group) use ($column, $pattern, $items): void {
+            foreach ($items as $item) {
                 $group->orWhere($column, 'like', $pattern)
-                    ->addBinding('%'.$this->escapeLike($this->text($item)).'%', 'where');
+                    ->addBinding('%'.$this->escapeLike($item).'%', 'where');
             }
         });
     }
