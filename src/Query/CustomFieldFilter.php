@@ -8,6 +8,7 @@ use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Expression;
+use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use PlinCode\CustomFields\Contracts\FieldType;
 use PlinCode\CustomFields\Models\CustomField;
@@ -264,6 +265,16 @@ class CustomFieldFilter implements Filter
     {
         if ($value === null) {
             return null;
+        }
+
+        if ($value === '') {
+            throw InvalidFilterValue::make($this->describe($value));
+        }
+
+        $validator = Validator::make(['value' => $value], ['value' => $this->fieldType()->rules($this->field)]);
+
+        if ($validator->fails()) {
+            throw InvalidFilterValue::make($this->describe($value));
         }
 
         try {
