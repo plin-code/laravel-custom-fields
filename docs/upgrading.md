@@ -88,6 +88,10 @@ instead of returning an empty result or a silently cast one.
 with status 400, so Laravel renders it as a 400 without a mapping, see
 [invalid filter values](querying.md#invalid-filter-values).
 
+A bare `contains=` is skipped under the default middleware, and an empty item inside a list
+is refused. An existing mapping of Spatie's `InvalidFilterValue` to a 400 in your exception handler
+can be removed.
+
 ## Typed column indexes (0.7.0)
 
 The shipped migration now indexes `value_integer`, `value_decimal`, `value_date` and
@@ -111,6 +115,20 @@ you already published are left alone. The migration reads the values table name 
 added by hand under the same name is skipped, and an index you added under a different name
 is left in place, so the column then carries both. A new install needs nothing, the first
 migration already creates all six indexes and the third one does nothing.
+
+## Mass assignment (1.0.0)
+
+Both models use `$fillable`. Any key outside it, including `id`, `created_at`, `updated_at`
+and the extra columns of a subclass, is dropped on `create()` and `fill()`, or throws
+`MassAssignmentException` under `Model::shouldBeStrict()` or
+`preventSilentlyDiscardingAttributes()`. A subclass configured under `models.*` must merge
+its columns into `$fillable`. An import that sets timestamps must use `forceFill()`.
+
+## Contains on PostgreSQL (1.0.0)
+
+`contains` uses `ILIKE` on PostgreSQL and is now case insensitive there. MySQL and SQLite
+behave as before. The escape character changed from `!` to a backslash, so MySQL with
+`NO_BACKSLASH_ESCAPES` in `sql_mode` rejects the escape clause.
 
 ## Data notes
 

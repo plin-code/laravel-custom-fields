@@ -147,6 +147,10 @@ class CustomFieldFilter implements Filter
     {
         $items = array_map($this->text(...), $this->many($value));
 
+        if ($items === []) {
+            throw InvalidFilterValueException::make($this->describe($value));
+        }
+
         $inner->where(function (Builder $group) use ($column, $items): void {
             foreach ($items as $item) {
                 LikeOperator::applyContains($group, $column, $item, 'or');
@@ -160,7 +164,7 @@ class CustomFieldFilter implements Filter
         $values = $this->many($value);
 
         if ($values === []) {
-            return;
+            throw InvalidFilterValueException::make($this->describe($value));
         }
 
         if ($all) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use PlinCode\CustomFields\Facades\CustomFields;
 use PlinCode\CustomFields\Models\CustomField;
+use PlinCode\CustomFields\Query\CustomFieldFilter;
 use Spatie\QueryBuilder\Exceptions\InvalidFilterValue;
 use Spatie\QueryBuilder\QueryBuilder;
 use Workbench\App\Models\Article;
@@ -46,4 +47,21 @@ it('keeps the multiselect contains filters working', function (): void {
 
     expect(containsTitles('/?filter[cf_tags:contains_any]=b'))->toBe(['two'])
         ->and(containsTitles('/?filter[cf_tags:contains_all]=a,b'))->toBe(['two']);
+});
+
+it('rejects an empty list on contains, contains_any and contains_all', function (): void {
+    $notes = CustomField::create(['name' => 'Notes', 'type' => 'textarea', 'entity_type' => 'article']);
+    $tags = CustomField::create(['name' => 'Tags', 'type' => 'multiselect', 'entity_type' => 'article', 'options' => [
+        ['key' => 'a', 'label' => 'A', 'is_active' => true],
+    ]]);
+    Article::create(['title' => 'one'])->setCustomFields(['notes' => 'a', 'tags' => ['a']]);
+
+    $apply = fn (CustomField $field, string $operation): array => Article::query()
+        ->tap(fn ($query) => (new CustomFieldFilter($field, $operation))($query, [], $field->slug))
+        ->pluck('title')
+        ->all();
+
+    expect(fn (): array => $apply($notes, CustomFieldFilter::CONTAINS))->toThrow(InvalidFilterValue::class)
+        ->and(fn (): array => $apply($tags, CustomFieldFilter::CONTAINS_ANY))->toThrow(InvalidFilterValue::class)
+        ->and(fn (): array => $apply($tags, CustomFieldFilter::CONTAINS_ALL))->toThrow(InvalidFilterValue::class);
 });
