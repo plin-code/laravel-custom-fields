@@ -5,6 +5,49 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.0 - 2026-10-19
+
+### Changed
+
+- `date` values are stored and read as `Y-m-d`, `datetime` values as `Y-m-d H:i:s`. Any input
+  the `date` rule accepts is normalised on write: `15 January 2024`, `01/15/2024` (read as
+  month/day/year), ISO 8601 strings and Carbon instances. Before, the submitted string was
+  written as is, so MySQL rejected most of these forms and SQLite stored a literal that
+  equality and range filters could not match.
+- A `datetime` with an offset or `Z` is converted to `config('app.timezone')` on write, on
+  read and when it is used as a filter value. A `date` keeps the calendar date it was written
+  with and is never shifted.
+- `decimal` values are validated against the column: at most six fraction digits, within
+  `±99999999999999.999999`, no exponent notation and no surrounding whitespace. A leading `+`
+  is stripped. Before, out of range values failed inside the database with a 500 and extra
+  fraction digits were rounded silently.
+- An empty string passed to `setCustomField()` or `setCustomFields()` now means `null`: the
+  stored row is removed, and a required field in a complete write is refused. Before, Laravel
+  skipped the type rules on `''`, so a `number` stored `0`, a `boolean` stored `false` and a
+  `date` or `decimal` failed inside the database. Whitespace only strings are still stored.
+
+### Fixed
+
+- A malformed `date` or `datetime` filter value such as `?filter[cf_when]=abc` now throws
+  Spatie's `InvalidFilterValue` (a 400) instead of escaping as a parser exception.
+- A naive `datetime` string is interpreted in `config('app.timezone')` on write and on read,
+  not in PHP's default timezone, and a stored value that carries an offset is shifted to the
+  app timezone when it is read.
+
+### Upgrade notes
+
+- Rows written before 0.3.0 on MySQL and PostgreSQL were already stored canonically and are
+  unaffected.
+- Rows written before 0.3.0 on SQLite may hold a non canonical date string. They read back in
+  the canonical form, but equality, range filters and sorting compare the stored text, so
+  re-save those values to normalise them.
+- On SQLite a `decimal` is stored with floating point affinity: values beyond about fifteen
+  significant digits lose precision and very small values read back in exponent form. Use
+  MySQL or PostgreSQL when exact decimals matter.
+- `whereCustomField()` passes the comparison value through the same normalisation. An empty
+  string given to it directly is parsed as the current time, so pass `null` or skip the scope
+  instead.
+
 ## 0.2.0 - 2026-10-02
 
 ### Added
