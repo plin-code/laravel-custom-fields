@@ -39,6 +39,34 @@ function boostDocuments(): array
     return ['guideline' => boostGuideline(), 'skill' => boostSkill()];
 }
 
+/** @return array<string, string> */
+function documentationFiles(): array
+{
+    $root = dirname(__DIR__, 2);
+    $files = ['README.md' => $root.'/README.md'];
+
+    foreach (glob($root.'/docs/*.md') ?: [] as $path) {
+        $files['docs/'.basename($path)] = $path;
+    }
+
+    return $files;
+}
+
+/** @return array<string, string> */
+function documents(): array
+{
+    return [
+        ...boostDocuments(),
+        ...array_map(static fn (string $path): string => (string) file_get_contents($path), documentationFiles()),
+    ];
+}
+
+/** @return array<int, string> */
+function documentNames(): array
+{
+    return ['guideline', 'skill', ...array_keys(documentationFiles())];
+}
+
 /**
  * Every package or framework class the documents name by its fully qualified name,
  * plus the ones their code examples import, keyed by short name.
@@ -263,15 +291,17 @@ describe('Boost skill', function (): void {
  */
 describe('Boost drift', function (): void {
     it('names only classes, interfaces and traits that exist', function (string $document): void {
-        foreach (boostKnownClasses(boostDocuments()[$document]) as $class) {
-            expect(class_exists($class) || interface_exists($class) || trait_exists($class))
-                ->toBeTrue("{$document} names [{$class}], which does not exist.");
-        }
-    })->with(['guideline', 'skill']);
+        $missing = array_filter(
+            boostKnownClasses(documents()[$document]),
+            static fn (string $class): bool => ! class_exists($class) && ! interface_exists($class) && ! trait_exists($class),
+        );
+
+        expect(array_values($missing))->toBe([], "{$document} names classes that do not exist.");
+    })->with(documentNames());
 
     it('calls only static methods and constants that exist', function (string $document): void {
-        $text = boostDocuments()[$document];
-        $known = boostKnownClasses(implode("\n", boostDocuments()));
+        $text = documents()[$document];
+        $known = boostKnownClasses(implode("\n", documents()));
         $examples = boostExampleClasses($text, $known);
 
         preg_match_all('/\b([A-Z]\w*)::(\w+)(\()?/', $text, $calls, PREG_SET_ORDER);
@@ -307,11 +337,11 @@ describe('Boost drift', function (): void {
 
             expect(boostMethodExists($class, $member))->toBeTrue("{$document} calls [{$class}::{$member}()], which does not exist.");
         }
-    })->with(['guideline', 'skill']);
+    })->with(documentNames());
 
     it('calls only instance methods that exist', function (string $document): void {
-        $text = boostDocuments()[$document];
-        $hosts = boostMethodHosts(boostKnownClasses(implode("\n", boostDocuments())));
+        $text = documents()[$document];
+        $hosts = boostMethodHosts(boostKnownClasses(implode("\n", documents())));
 
         preg_match_all('/->(\w+)\(/', $text, $arrows);
         preg_match_all('/`(?:\$\w+->)?([a-z]\w*)\(/', $text, $inline);
@@ -325,17 +355,19 @@ describe('Boost drift', function (): void {
 
             expect($found)->not->toBeEmpty("{$document} calls [{$method}()], which no referenced class provides.");
         }
-    })->with(['guideline', 'skill']);
+    })->with(documentNames());
 
     it('writes the trait signatures exactly as the code declares them', function (): void {
-        preg_match_all('/^- `(\w+\(.*?\): \w+)`$/m', boostSkill(), $matches);
+        foreach ([boostSkill(), documents()['docs/values.md']] as $text) {
+            preg_match_all('/^- `(\w+\(.*?\): \w+)`$/m', $text, $matches);
 
-        expect($matches[1])->not->toBeEmpty();
+            expect($matches[1])->not->toBeEmpty();
 
-        foreach ($matches[1] as $documented) {
-            $name = strstr($documented, '(', true);
+            foreach ($matches[1] as $documented) {
+                $name = strstr($documented, '(', true);
 
-            expect(boostSignature(new ReflectionMethod(HasCustomFields::class, (string) $name)))->toBe($documented);
+                expect(boostSignature(new ReflectionMethod(HasCustomFields::class, (string) $name)))->toBe($documented);
+            }
         }
 
         preg_match('/`registerEntity\((.*?)\)`/', boostSkill(), $entity);
@@ -344,8 +376,8 @@ describe('Boost drift', function (): void {
             ->toBe('registerEntity('.($entity[1] ?? '').')');
     });
 
-    it('lists the whole field type contract and nothing else', function (): void {
-        preg_match_all('/^public (?:static )?function (\w+\(.*?\): \w+);$/m', boostSkill(), $matches);
+    it('lists the whole field type contract and nothing else', function (string $document): void {
+        preg_match_all('/^public (?:static )?function (\w+\(.*?\): \w+);$/m', documents()[$document], $matches);
 
         $contract = array_map(
             static fn (ReflectionMethod $method): string => boostSignature($method),
@@ -353,10 +385,10 @@ describe('Boost drift', function (): void {
         );
 
         expect($matches[1])->toEqualCanonicalizing($contract);
-    });
+    })->with(['skill', 'docs/custom-field-types.md']);
 
     it('names only config keys the package config defines, and all of them', function (string $document): void {
-        $text = boostDocuments()[$document];
+        $text = documents()[$document];
         $config = (array) config('laravel-custom-fields');
 
         preg_match_all('/(?<![\w\/-])laravel-custom-fields\.([a-z_]+(?:\.[a-z_]+)*)/', $text, $prefixed);
@@ -370,32 +402,38 @@ describe('Boost drift', function (): void {
             }
         }
 
-        foreach (array_unique($keys) as $key) {
-            expect(Arr::has($config, $key))->toBeTrue("{$document} names the config key [{$key}], which does not exist.");
-        }
+        $unknown = array_filter(array_unique($keys), static fn (string $key): bool => ! Arr::has($config, $key));
+
+        expect(array_values($unknown))->toBe([], "{$document} names config keys that do not exist.");
 
         if ($document === 'guideline') {
             foreach (array_keys(Arr::dot($config)) as $key) {
                 expect($text)->toContain('laravel-custom-fields.'.$key);
             }
         }
-    })->with(['guideline', 'skill']);
+
+        if ($document === 'docs/installation.md') {
+            foreach (array_keys(Arr::dot($config)) as $key) {
+                expect($text)->toContain("`{$key}`");
+            }
+        }
+    })->with(documentNames());
 
     it('names only registered field types, and all of them', function (string $document): void {
-        $text = boostDocuments()[$document];
+        $text = documents()[$document];
         $registered = array_keys(CustomFields::types());
         $declared = boostDeclaredTypeKeys($text);
 
         preg_match_all("/'type' => '(\w+)'/", $text, $used);
 
-        foreach ($used[1] as $key) {
-            expect([...$registered, ...$declared])->toContain($key);
-        }
+        expect(array_values(array_diff($used[1], [...$registered, ...$declared])))->toBe([]);
 
-        foreach ($registered as $key) {
-            expect($text)->toContain("`{$key}`");
+        if (in_array($document, ['guideline', 'skill', 'docs/defining-fields.md'], true)) {
+            foreach ($registered as $key) {
+                expect($text)->toContain("`{$key}`");
+            }
         }
-    })->with(['guideline', 'skill']);
+    })->with(documentNames());
 
     it('describes the storage column and the operations of every type as the code does', function (): void {
         preg_match_all('/^\| (`\w+`(?:, `\w+`)*) \| `(\w+)` \| [^|]+ \| ([^|]+) \|$/m', boostSkill(), $rows, PREG_SET_ORDER);
@@ -428,24 +466,58 @@ describe('Boost drift', function (): void {
         }
     });
 
+    it('describes every field type in the defining fields table as the code does', function (): void {
+        preg_match_all('/^\| `(\w+)` \| ([^|]+) \| `(\w+)` \| `([\w-]+)` \| ([^|]+) \| (yes|no) \|$/m', documents()['docs/defining-fields.md'], $rows, PREG_SET_ORDER);
+
+        $documented = [];
+
+        foreach ($rows as [, $key, $label, $column, $input, $operations, $sortable]) {
+            preg_match_all('/`(\w+)`/', $operations, $listed);
+
+            $documented[$key] = [
+                'label' => trim($label),
+                'column' => $column,
+                'input' => $input,
+                'operations' => $listed[1],
+                'sortable' => $sortable === 'yes',
+            ];
+        }
+
+        $actual = array_map(static fn (FieldType $type): array => [
+            'label' => $type->label(),
+            'column' => $type->storageColumn(),
+            'input' => $type->inputHint(),
+            'operations' => array_values(array_diff($type->queryOperations(), [CustomFieldSorter::SORT])),
+            'sortable' => in_array(CustomFieldSorter::SORT, $type->queryOperations(), true),
+        ], CustomFields::types());
+
+        expect(array_keys($documented))->toEqualCanonicalizing(array_keys($actual));
+
+        foreach ($actual as $key => $type) {
+            expect($documented[$key]['operations'])->toEqualCanonicalizing($type['operations'], "filter operations of [{$key}]");
+
+            unset($documented[$key]['operations'], $type['operations']);
+
+            expect($documented[$key])->toBe($type, "label, column, input hint and sort of [{$key}]");
+        }
+    });
+
     it('names only storage columns the values table has, and the guideline names all of them', function (string $document): void {
-        $text = boostDocuments()[$document];
+        $text = documents()[$document];
 
         preg_match_all('/\bvalue_[a-z]+\b/', $text, $columns);
 
-        foreach (array_unique($columns[0]) as $column) {
-            expect(boostStorageColumns())->toContain($column);
-        }
+        expect(array_values(array_diff($columns[0], boostStorageColumns())))->toBe([]);
 
         if ($document === 'guideline') {
             foreach (boostStorageColumns() as $column) {
                 expect($text)->toContain("`{$column}`");
             }
         }
-    })->with(['guideline', 'skill']);
+    })->with(documentNames());
 
     it('names only query operations the package serves', function (string $document): void {
-        $text = boostDocuments()[$document];
+        $text = documents()[$document];
         $prefix = preg_quote(CustomFields::keyPrefix(), '/');
 
         preg_match_all('/filter\['.$prefix.'[\w-]+:(\w+)\]/', $text, $filters);
@@ -458,33 +530,36 @@ describe('Boost drift', function (): void {
             $operations = [...$operations, ...$names[1]];
         }
 
-        expect($operations)->not->toBeEmpty();
+        expect(array_values(array_diff($operations, boostQueryOperations())))->toBe([]);
 
-        foreach (array_unique($operations) as $operation) {
-            expect(boostQueryOperations())->toContain($operation);
+        if (array_key_exists($document, boostDocuments())) {
+            expect($operations)->not->toBeEmpty()
+                ->and($text)->toContain($prefix === '' ? 'filter[' : 'filter['.CustomFields::keyPrefix());
         }
+    })->with(documentNames());
 
-        expect($text)->toContain($prefix === '' ? 'filter[' : 'filter['.CustomFields::keyPrefix());
-    })->with(['guideline', 'skill']);
-
-    it('lists the whole operation vocabulary in the skill', function (): void {
+    it('lists the whole operation vocabulary', function (string $document): void {
         foreach (boostQueryOperations() as $operation) {
-            expect(boostSkill())->toContain("`{$operation}`");
+            expect(documents()[$document])->toContain("`{$operation}`");
         }
-    });
+    })->with(['skill', 'docs/querying.md']);
 
     it('runs only artisan commands that are registered', function (): void {
-        preg_match_all('/php artisan ([\w:-]+)/', implode("\n", boostDocuments()), $commands);
+        preg_match_all('/php artisan ([\w:-]+)/', implode("\n", documents()), $commands);
 
         expect($commands[1])->not->toBeEmpty();
 
         foreach (array_unique($commands[1]) as $command) {
+            if (str_starts_with($command, 'boost:')) {
+                continue;
+            }
+
             expect(Artisan::all())->toHaveKey($command);
         }
     });
 
     it('names only publish tags the service provider registers', function (): void {
-        $text = implode("\n", boostDocuments());
+        $text = implode("\n", documents());
 
         preg_match_all('/--tag="([\w-]+)"/', $text, $flags);
         preg_match_all('/`(laravel-custom-fields(?:-[a-z]+)?)`/', $text, $inline);
@@ -499,12 +574,36 @@ describe('Boost drift', function (): void {
     });
 
     it('names only migrations the package ships', function (): void {
-        preg_match_all('/`(create_\w+_table)`/', implode("\n", boostDocuments()), $migrations);
+        preg_match_all('/`(create_\w+_table)`/', implode("\n", documents()), $migrations);
 
         expect($migrations[1])->not->toBeEmpty();
 
         foreach ($migrations[1] as $migration) {
             expect(glob(__DIR__.'/../../database/migrations/*_'.$migration.'.php'))->not->toBeEmpty();
         }
+    });
+});
+
+describe('Documentation links', function (): void {
+    it('links only files that exist in the repository', function (string $document): void {
+        $root = dirname(__DIR__, 2);
+        $base = $document === 'README.md' ? $root : dirname($root.'/'.$document);
+
+        preg_match_all('#\]\(https://github\.com/plin-code/laravel-custom-fields/blob/main/([^)\#]+)#', documents()[$document], $absolute);
+        preg_match_all('#\]\((?!https?://)([^)\#]+)#', documents()[$document], $relative);
+
+        foreach ($absolute[1] as $path) {
+            expect(file_exists($root.'/'.$path))->toBeTrue("{$document} links [{$path}], which does not exist.");
+        }
+
+        foreach ($relative[1] as $path) {
+            expect(file_exists($base.'/'.$path))->toBeTrue("{$document} links [{$path}], which does not exist.");
+        }
+    })->with(array_keys(documentationFiles()));
+
+    it('links the docs from the readme only by absolute url, so packagist keeps them working', function (): void {
+        preg_match_all('#\]\((?!https?://)([^)]*docs/[^)]*)\)#', documents()['README.md'], $relative);
+
+        expect($relative[1])->toBe([]);
     });
 });

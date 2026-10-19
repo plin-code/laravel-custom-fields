@@ -28,9 +28,10 @@ interface FieldType
     /**
      * Query operations the type can actually serve.
      *
-     * The vocabulary of the package is equals, in, contains, greater_than, less_than,
-     * between, is_null, is_not_null, contains_any, contains_all and sort. A consumer
-     * type may declare its own operation, and then it also provides the filter for it.
+     * The filter operations are equals, in, contains, greater_than, less_than, between,
+     * is_null, is_not_null, contains_any and contains_all, and sort makes the field
+     * sortable. Any other entry is skipped by CustomFields::filtersFor(), so a consumer
+     * type that needs its own operation registers its own AllowedFilter for it.
      *
      * @return array<int, string>
      */
