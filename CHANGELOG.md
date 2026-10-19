@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0 - 2026-10-19
+
+### Fixed
+
+- An explicit `slug` passed to `CustomField::create()` is validated: it must match
+  `/^[a-z0-9][a-z0-9_-]{0,99}$/`, otherwise an `InvalidArgumentException` is thrown. Before,
+  a slug containing `.` or `*` was read by the validator as a nested key, so the type rules
+  never ran and `setCustomField('a.b', 'not a number')` stored `0`, and a slug such as
+  `price:greater_than` produced filter names that collided with the `greater_than` filter of
+  a field named `price`. Generated slugs are unaffected.
+- The `type` of a definition is resolved through the registry on create, and on update when
+  it changes, so a typo such as `multi_select` fails at save time. Before, the row was saved
+  and from then on `filtersFor()`, `sortsFor()`, `getCustomFields()` and validation threw for
+  every request on that entity.
+
 ## 0.3.0 - 2026-10-19
 
 ### Changed
