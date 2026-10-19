@@ -52,17 +52,34 @@ class CustomFields
         return array_map(fn (string $type): FieldType => app($type), $this->types);
     }
 
-    /** @param class-string<Model> $model */
+    /**
+     * The key is added to Relation::morphMap(), so it becomes the getMorphClass()
+     * of the model for every polymorphic relation, not only for custom fields.
+     *
+     * @param  class-string<Model>  $model
+     */
     public function registerEntity(string $model, string $key, ?string $label = null): void
     {
         if (isset($this->entities[$model])) {
-            return;
+            $existingKey = $this->entities[$model]['key'];
+
+            if ($existingKey === $key) {
+                return;
+            }
+
+            throw new InvalidArgumentException("Model [{$model}] is already registered for custom fields as [{$existingKey}].");
         }
 
         foreach ($this->entities as $entity) {
             if ($entity['key'] === $key) {
                 throw new InvalidArgumentException("Custom field entity key [{$key}] is already registered.");
             }
+        }
+
+        $existing = Relation::getMorphedModel($key);
+
+        if ($existing !== null && $existing !== $model) {
+            throw new InvalidArgumentException("Custom field entity key [{$key}] is already mapped to [{$existing}] in the morph map.");
         }
 
         $this->entities[$model] = [
